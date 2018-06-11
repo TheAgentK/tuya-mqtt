@@ -1,0 +1,16 @@
+Group:Switch gTuya  "Tuya devices"
+Group gTuyaDetails  "Tuya details"
+Group gTuyaConfigs  "Tuya configs"
+Group gTuyaSwitches "Tuya switches"
+
+Switch tuya      { channel="exec:command:tuya_switch:run"    }
+String tuya_Args { channel="exec:command:tuya_switch:input"  }
+String tuya_Out  { channel="exec:command:tuya_switch:output" }
+
+String tuya_kitchen_waterheater_config "--id=<devId> --key=<devKey> --ip=<devIp>" (gTuya, gTuyaConfigs) //Config for execution
+String tuya_kitchen_waterheater_trigger "tuya_kitchen_coffeemachine_switch" (gTuya, gTuyaConfigs) //trigger other switch with name "tuya_kitchen_coffeemachine_switch"
+Switch tuya_kitchen_waterheater_switch "Steckdose Wasserkocher" <socket> (Kitchen, gTuya, gTuyaSwitches) ["Switchable"]
+
+String tuya_kitchen_coffeemachine_config "--id=<devId> --key=<devKey> --ip=<devIp>" (gTuya, gTuyaConfigs) //Config for execution
+String tuya_kitchen_coffeemachine_trigger "tuya_kitchen_waterheater_switch" (gTuya, gTuyaConfigs) //trigger other switch with name "tuya_kitchen_waterheater_switch"
+Switch tuya_kitchen_coffeemachine_switch "Steckdose Kaffeemaschine" <socket> (Kitchen, gTuya, gTuyaSwitches) ["Switchable"]

@@ -1,0 +1,6 @@
+Thing exec:command:tuya_switch "Tuya Gateway"  @ "System" [
+    command="node /etc/openhab2/scripts/tuyaapi_openhab/tuya.js %2$s", 
+    transform="REGEX((.*?))",
+    interval=0,
+    timeout=1,
+    autorun=true]

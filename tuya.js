@@ -1,11 +1,9 @@
 /* 
  * Simple wrapper for tuyapi for use with openhab or command line
 npm install codetheweb/tuyapi
-node ohtuya.js args 
-arg format -ip 192.168.x.x -id 1231204564df -key dsf456sdf TOGGLE
+node tuya.js args
+arg format --ip=192.168.x.x --id=1231204564df --key=dsf456sdf TOGGLE
 args can be, ON, OFF, or TOGGLE. No arguement returns state
-@todo set up js to log properly, sending to console messes up output.
-@todo limit connection frequency seem to get connection errors
 */
 
 const TuyaDevice = require('tuyapi');
