@@ -22,11 +22,11 @@ This involves MIM of the connection. Instructions can be found here: https://git
 
 Commands are
 ```
-node njstuya.js --ip=DEVICEIP --id=DEVICEID --key=DEVICEKEY COMMAND
+node tuya.js --ip=DEVICEIP --id=DEVICEID --key=DEVICEKEY COMMAND
     --> Commands are ON, OFF, TOGGLE, STATE
 
 e.g.
-node njstuya.js --ip=10.0.0.2 --id=213klj349sdfjl324po32 --key=342kljerw98 ON
+node tuya.js --ip=10.0.0.2 --id=213klj349sdfjl324po32 --key=342kljerw98 ON
 ```
 All commands return the state of the switch.
 
