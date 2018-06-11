@@ -72,7 +72,7 @@ then
             config = relatedConfig.label;
 
             var args = config + " now";
-            var output = executeCommandLine("node /etc/openhab2/scripts/tuya-api/tuya.js " + args, 5000);
+            var output = executeCommandLine("node /etc/openhab2/scripts/tuyaapi_openhab/tuya.js " + args, 5000);
             det.postUpdate(output);
             if(output != "ON" && output != "OFF"){
                 logError(appName, "State changed to " + output)
