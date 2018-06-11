@@ -1,0 +1,16 @@
+{
+  "name": "tuya-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "tuya.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mqtt": "^2.18.0",
+    "tuyapi": "github:codetheweb/tuyapi",
+    "yargs": "^11.0.0"
+  }
+}
