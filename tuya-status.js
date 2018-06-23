@@ -24,7 +24,7 @@ exports.hasDevice = function () {
 
 exports.get = function (callback) {
     if (this.hasDevice()) {
-        tuya.resolveIds().then(() => {
+        tuya.resolveId().then(() => {
             tuya.get().then(status => {
                 if (_DEBUG) {
                     console.log('Current Status: ' + status);
@@ -35,7 +35,7 @@ exports.get = function (callback) {
     }
 }
 
-exports.set = function (newState) {
+exports.set = function (newState, callback) {
     if (this.hasDevice()) {
         tuya.set({
             set: newState
@@ -43,12 +43,15 @@ exports.set = function (newState) {
             if (_DEBUG) {
                 console.log('Result of setting status to ' + newState + ': ' + result);
             }
-
             tuya.get().then(status => {
                 if (_DEBUG) {
                     console.log('New status: ' + status);
                 }
-                console.log(bmap(status));
+                if (callback != undefined) {
+                    callback.call(this, bmap(status));
+                } else {
+                    console.log(bmap(status));
+                }
                 return;
             });
         });
@@ -62,23 +65,23 @@ exports.getCurrent = function () {
     });
 }
 
-exports.toggle = function () {
+exports.toggle = function (callback) {
     var self = this;
     self.get(function (newStatus) {
-        self.set(!newStatus);
+        self.set(!newStatus, callback);
     })
 }
 
-exports.on = function () {
+exports.on = function (callback) {
     var self = this;
-    tuya.resolveIds().then(() => {
-        self.set(true);
+    tuya.resolveId().then(() => {
+        self.set(true, callback);
     });
 }
 
-exports.off = function () {
+exports.off = function (callback) {
     var self = this;
-    tuya.resolveIds().then(() => {
-        self.set(false);
+    tuya.resolveId().then(() => {
+        self.set(false, callback);
     });
 }

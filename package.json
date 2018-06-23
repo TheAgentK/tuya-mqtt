@@ -9,7 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "mqtt": "^2.18.0",
+    "cron": "^1.3.0",
+    "mqtt": "^2.18.1",
     "tuyapi": "github:codetheweb/tuyapi",
     "yargs": "^11.0.0"
   }
