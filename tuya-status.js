@@ -1,4 +1,5 @@
 const TuyaDevice = require('tuyapi');
+const TuyaColor = require('./tuya-color');
 let tuya = undefined;
 _DEBUG = true;
 
@@ -8,10 +9,12 @@ function bmap(istate) {
 
 exports.setDebug = function (debug) {
     _DEBUG = debug;
+    TuyaColor.setDebug(debug);
 }
 
 exports.setDevice = function (newTuya) {
     tuya = newTuya;
+    TuyaColor.setDevice(tuya);
 }
 
 exports.hasDevice = function () {
@@ -35,13 +38,11 @@ exports.get = function (callback) {
     }
 }
 
-exports.set = function (newState, callback) {
+exports.set = function (options, callback) {
     if (this.hasDevice()) {
-        tuya.set({
-            set: newState
-        }).then(result => {
+        tuya.set(options).then(result => {
             if (_DEBUG) {
-                console.log('Result of setting status to ' + newState + ': ' + result);
+                console.log('Result of setting status to ' + options + ': ' + result);
             }
             tuya.get().then(status => {
                 if (_DEBUG) {
@@ -68,20 +69,31 @@ exports.getCurrent = function () {
 exports.toggle = function (callback) {
     var self = this;
     self.get(function (newStatus) {
-        self.set(!newStatus, callback);
+        self.set({
+            set: !newState
+        }, callback);
     })
+}
+
+exports.setColor = function (hexColor, callback) {
+    var color = new TuyaColor.color();
+    color.setColor(hexColor);
 }
 
 exports.on = function (callback) {
     var self = this;
     tuya.resolveId().then(() => {
-        self.set(true, callback);
+        self.set({
+            set: true
+        }, callback);
     });
 }
 
 exports.off = function (callback) {
     var self = this;
     tuya.resolveId().then(() => {
-        self.set(false, callback);
+        self.set({
+            set: false
+        }, callback);
     });
 }

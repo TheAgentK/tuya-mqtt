@@ -2,7 +2,7 @@ const TuyaDevice = require('tuyapi');
 const TuyaStatus = require('./tuya-status');
 
 let tuya = undefined;
-_DEBUG = false;
+_DEBUG = true;
 
 exports.setDebug = function (debug) {
     _DEBUG = debug;
@@ -57,6 +57,11 @@ exports.setStatus = function (newState, callback) {
             TuyaStatus.off(callback);
         }
     }
+}
+
+exports.setColor = function (hexColor, callback) {
+    console.log("tuya-connector.setColor");
+    TuyaStatus.setColor(hexColor, callback);
 }
 
 exports.getCurrent = function () {
