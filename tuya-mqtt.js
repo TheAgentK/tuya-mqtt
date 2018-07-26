@@ -1,12 +1,12 @@
 const mqtt = require('mqtt');
-const TuyaDevice = require('./tuya-connector');
+const TuyaDevice = require('./tuyaapi-extended');
 const CronJob = require('cron').CronJob;
-const autoUpdate = [];
+const crypto = require('crypto');
+const autoUpdate = {};
 
 /**
  * MQTT Settings
  */
-var Topic = '#'; //subscribe to all topics
 var options = {
     clientId: 'tuya_mqtt',
     port: 1883,
@@ -14,7 +14,7 @@ var options = {
 };
 const client = mqtt.connect({
     host: 'localhost',
-    port: 1883
+    port: options.port
 });
 
 function bmap(istate) {
@@ -25,28 +25,86 @@ client.on('connect', function () {
     var topic = 'tuya/#';
     client.subscribe(topic);
     console.log("MQTT Subscribed");
+    updateDeviceStatus();
 })
 
-var knowDevice = function (tuyaID, tuyaKey, tuyaIP) {
-    var isKnown = false;
-    autoUpdate.forEach(function (entry) {
-        if (entry.id == tuyaID && entry.key == tuyaKey && entry.ip == tuyaIP) {
-            isKnown = true;
-        }
-    });
-    return isKnown;
-}
-var addDevice = function (type, tuyaID, tuyaKey, tuyaIP) {
-    var newDevice = {
-        id: tuyaID,
-        key: tuyaKey,
-        ip: tuyaIP,
-        type: type
-    };
-    autoUpdate.push(newDevice);
+function createHash(tuyaID, tuyaKey, tuyaIP) {
+    return crypto.createHmac('sha256', "")
+        .update(tuyaID + tuyaKey + tuyaIP)
+        .digest('hex');
 }
 
-exports.publishStatus = function (tuyaID, tuyaKey, tuyaIP, type, status) {
+function isKnowDevice(tuyaID, tuyaKey, tuyaIP) {
+    var isKnown = false;
+    var searchKey = createHash(tuyaID, tuyaKey, tuyaIP);
+    if (autoUpdate[searchKey] != undefined) {
+        isKnown = true;
+    }
+    return isKnown;
+}
+function getKnownDevice(tuyaID, tuyaKey, tuyaIP) {
+    var searchKey = createHash(tuyaID, tuyaKey, tuyaIP);
+    return autoUpdate[searchKey];
+}
+function addDevice(key, device) {
+    autoUpdate[key] = device;
+}
+function createDevice(tuyaID, tuyaKey, tuyaIP, tuyaType) {
+    if (tuyaID != undefined && tuyaKey != undefined) {
+        var tuya = undefined;
+        if (isKnowDevice(tuyaID, tuyaKey, tuyaIP)) {
+            tuya = getKnownDevice(tuyaID, tuyaKey, tuyaIP);
+        } else {
+            var key = createHash(tuyaID, tuyaKey, tuyaIP);
+            var tuya = new TuyaDevice({
+                id: tuyaID,
+                key: tuyaKey,
+                ip: tuyaIP,
+                type: tuyaType
+            });
+            addDevice(key, tuya);
+        }
+        return tuya;
+    }
+    return undefined;
+};
+
+client.on('message', function (topic, message) {
+    try {
+        var topic = topic.split("/");
+        var type = topic[1];
+        var exec = topic[5];
+        if (type == "socket" && exec == "command" && topic.length == 7) {
+            var tuya = createDevice(topic[2], topic[3], topic[4], type);
+            tuya.onoff(topic[6], function (status) {
+                publishStatus(tuya, bmap(status));
+            });
+        }
+        if (type == "lightbulb" && exec == "command" && topic.length == 7) {
+            var tuya = createDevice(topic[2], topic[3], topic[4], type);
+            tuya.onoff(topic[6], function (status) {
+                publishStatus(tuya, bmap(status));
+            });
+        }
+        if (type == "lightbulb" && exec == "color" && topic.length == 6) {
+            message = message.toString();
+            message = message.toLowerCase();
+            var tuya = createDevice(topic[2], topic[3], topic[4]);
+            tuya.setColor(message);
+        }
+    } catch (e) {
+        console.error(e);
+    }
+});
+
+
+function publishStatus(tuya, status) {
+    var device = tuya.getDevice();
+    var type = device.type;
+    var tuyaID = device.id;
+    var tuyaKey = device.key;
+    var tuyaIP = device.ip;
+
     if (tuyaID != undefined && tuyaKey != undefined && tuyaIP != undefined) {
         var topic = "tuya/" + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/state";
         client.publish(topic, status, {
@@ -56,92 +114,19 @@ exports.publishStatus = function (tuyaID, tuyaKey, tuyaIP, type, status) {
     }
 }
 
-exports.setStatus = function (type, tuyaID, tuyaKey, tuyaIP, status) {
-    if (tuyaID != undefined && tuyaKey != undefined && tuyaIP != undefined) {
-        if (!knowDevice(tuyaID, tuyaKey, tuyaIP)) {
-            addDevice(type, tuyaID, tuyaKey, tuyaIP);
-        }
-        TuyaDevice.createDevice(tuyaID, tuyaKey, tuyaIP);
-        if (TuyaDevice.hasDevice()) {
-            TuyaDevice.setStatus(status, function (newStatus) {
-                module.exports[type].publishStatus(tuyaID, tuyaKey, tuyaIP, newStatus);
-            });
-        }
-    }
-}
-
-exports.getStatus = function (type, tuyaID, tuyaKey, tuyaIP) {
-    if (tuyaID != undefined && tuyaKey != undefined && tuyaIP != undefined) {
-        TuyaDevice.createDevice(tuyaID, tuyaKey, tuyaIP);
-        if (TuyaDevice.hasDevice()) {
-            TuyaDevice.getStatus(function (status) {
-                module.exports[type].publishStatus(tuyaID, tuyaKey, tuyaIP, bmap(status));
+function updateDeviceStatus() {
+    try {
+        Object.keys(autoUpdate).forEach(function (k) {
+            var tuya = autoUpdate[k];
+            tuya.getStatus(function (status) {
+                publishStatus(tuya, bmap(status));
             })
-        }
-    }
-}
-
-exports.socket = {};
-exports.socket.publishStatus = function (tuyaID, tuyaKey, tuyaIP, status) {
-    return module.exports.publishStatus(tuyaID, tuyaKey, tuyaIP, "socket", status);
-}
-
-exports.lightbulb = {};
-exports.lightbulb.publishStatus = function (tuyaID, tuyaKey, tuyaIP, status) {
-    return module.exports.publishStatus(tuyaID, tuyaKey, tuyaIP, "lightbulb", status);
-}
-exports.lightbulb.publishColor = function (tuyaID, tuyaKey, tuyaIP, color) {
-    if (tuyaID != undefined && tuyaKey != undefined && tuyaIP != undefined) {
-        var topic = "tuya/lightbulb/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/state/color";
-        client.publish(topic, color, {
-            retain: true,
-            qos: 2
-        });
-    }
-}
-exports.lightbulb.setColor = function (tuyaID, tuyaKey, tuyaIP, color) {
-    if (tuyaID != undefined && tuyaKey != undefined && tuyaIP != undefined) {
-        if (!knowDevice(tuyaID, tuyaKey, tuyaIP)) {
-            //addDevice("lightbulb", tuyaID, tuyaKey, tuyaIP);
-        }
-        TuyaDevice.createDevice(tuyaID, tuyaKey, tuyaIP);
-        if (TuyaDevice.hasDevice()) {
-            console.log("tuya-mqtt.lightbulb.setColor: " + color);
-            TuyaDevice.setColor(color, function (newStatus) {
-                console.log(newStatus);
-                module.exports.lightbulb.publishColor(tuyaID, tuyaKey, tuyaIP, newStatus);
-            });
-        }
-    }
-}
-
-client.on('message', function (topic, message) {
-    try {
-        var topic = topic.split("/");
-        var type = topic[1];
-        var exec = topic[5];
-        if (type == "socket" && exec == "command" && topic.length == 7) {
-            module.exports.setStatus(type, topic[2], topic[3], topic[4], topic[6]);
-        }
-        if (type == "lightbulb" && exec == "command" && topic.length == 7) {
-            module.exports.setStatus(type, topic[2], topic[3], topic[4], topic[6]);
-        }
-        if (type == "lightbulb" && exec == "color" && topic.length == 6) {
-            message = message.toString();
-            message = message.toLowerCase();
-            module.exports.lightbulb.setColor(topic[2], topic[3], topic[4], message);
-        }
-    } catch (e) {
-        console.error(e);
-    }
-});
-
-new CronJob('0 */1 * * * *', function () {
-    try {
-        autoUpdate.forEach(function (entry) {
-            module.exports.getStatus(entry.type, entry.id, entry.key, entry.ip);
         });
     } catch (e) {
         console.error(e);
     }
+}
+
+new CronJob('0 */10 * * * *', function () {
+    updateDeviceStatus();
 }, null, true, 'America/Los_Angeles');
