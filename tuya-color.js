@@ -1,4 +1,5 @@
 const convert = require('color-convert');
+const debug = require('debug')('TuyColor');
 
 function TuyaColorLight(tuya) {
     this.tuya = tuya;
@@ -26,8 +27,6 @@ function TuyaColorLight(tuya) {
     this.colorTempMax = 500;
 
     this.dps = {};
-
-    this.debug = false;
 }
 
 TuyaColorLight.prototype._convertPercentageToVal = function (percentage) {
@@ -83,9 +82,7 @@ TuyaColorLight.prototype._convertColorTemperatureToHK = function (val) {
 
 
 TuyaColorLight.prototype.tuyaDebug = function (args) {
-    if (this.debug === true) {
-        console.log(args);
-    }
+    debug(args);
 };
 
 TuyaColorLight.prototype._getAlphaHex = function (brightness) {
@@ -116,7 +113,7 @@ TuyaColorLight.prototype.setSaturation = function (value, callback) {
 TuyaColorLight.prototype.setBrightness = function (value, callback) {
     this.brightness = value;
     var newValue = this._convertPercentageToVal(value);
-    this.tuyaDebug(this.debugPrefix + " BRIGHTNESS from UI: " + value + ' Converted from 100 to 255 scale: ' + newValue);
+    this.tuyaDebug("BRIGHTNESS from UI: " + value + ' Converted from 100 to 255 scale: ' + newValue);
 }
 
 TuyaColorLight.prototype.setHue = function (value, callback) {
@@ -150,7 +147,7 @@ TuyaColorLight.prototype.setHSL = function (hue, saturation, brightness) {
 TuyaColorLight.prototype.setColor = function (hexColor) {
     var color = convert.hex.hsl(hexColor);
     this.tuyaDebug(color);
-    this.setHSL(color[0], color[1], color[2]);
+    this.setHSL(color[0], color[1], 100);
     return this.getDps();
 }
 

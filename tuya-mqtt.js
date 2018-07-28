@@ -47,7 +47,6 @@ function isKnowDevice(tuyaID, tuyaKey, tuyaIP) {
         if (autoUpdate[searchKey] != undefined) {
             isKnown = true;
         }
-        debug(autoUpdate);
         return isKnown;
     } catch (e) {
         debug(e);
@@ -104,6 +103,7 @@ client.on('message', function (topic, message) {
         var topic = topic.split("/");
         var type = topic[1];
         var exec = topic[5];
+
         if ((type == "socket" || type == "lightbulb") && exec == "command" && topic.length == 7) {
             var tuya = createDevice(topic[2], topic[3], topic[4], type);
             tuya.onoff(topic[6], function (status) {
@@ -114,9 +114,10 @@ client.on('message', function (topic, message) {
         if (type == "lightbulb" && exec == "color" && topic.length == 6) {
             message = message.toString();
             message = message.toLowerCase();
-            var tuya = createDevice(topic[2], topic[3], topic[4]);
+            var tuya = createDevice(topic[2], topic[3], topic[4], type);
             tuya.setColor(message, function (status) {
-                debug("Color is updated");
+                publishStatus(tuya, bmap(status));
+                debug("Color is updated: " + bmap(status));
             });
         }
     } catch (e) {
@@ -139,6 +140,9 @@ function publishStatus(tuya, status) {
                 retain: true,
                 qos: 2
             });
+            debug("mqtt status updated to:" + topic + " -> " + status);
+        } else {
+            debug("mqtt status not updated");
         }
     } catch (e) {
         debug(e);
@@ -159,5 +163,5 @@ function updateDeviceStatus() {
 }
 
 new CronJob('0 */10 * * * *', function () {
-    updateDeviceStatus();
+    //updateDeviceStatus();
 }, null, true, 'America/Los_Angeles');

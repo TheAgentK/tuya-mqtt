@@ -111,34 +111,13 @@ TuyaDevice.prototype.set = function (options) {
     });
 };
 
-TuyaDevice.prototype._send = function (ip, buffer) {
-    if (typeof ip === 'undefined') {
-        throw new TypeError('Device missing IP address.');
-    }
-
-    const operation = retry.operation({
-        retries: 4,
-        factor: 1.5,
-        minTimeout: 10000
-    });
-
-    return new Promise((resolve, reject) => {
-        operation.attempt(currentAttempt => {
-            debug('Socket attempt', currentAttempt);
-
-            this._sendUnwrapped(ip, buffer).then(result => {
-                resolve(result);
-            }).catch(error => {
-                if (operation.retry(error)) {
-                    return;
-                }
-
-                reject(operation.mainError());
-            });
-        });
-    });
-};
-
+/**
+ * Sends a query to a device.
+ * @private
+ * @param {String} ip IP of device
+ * @param {Buffer} buffer buffer of data
+ * @returns {Promise<string>} returned data
+ */
 TuyaDevice.prototype._sendUnwrapped = function (ip, buffer) {
     debug('Sending this data: ', buffer.toString('hex'));
 
@@ -152,7 +131,6 @@ TuyaDevice.prototype._sendUnwrapped = function (ip, buffer) {
         // 10 seconds is a more reasonable default
         // since `retry` is used.
         client.setTimeout(1000, () => {
-            debug('connection timed out');
             client.emit('error', new Error('connection timed out'));
             client.destroy();
         });
@@ -184,23 +162,22 @@ TuyaDevice.prototype._sendUnwrapped = function (ip, buffer) {
             data = Parser.parse(data);
 
             if (typeof data === 'object' || typeof data === 'undefined') {
-                resolve(data);
-            } else { // Message is encrypted
-                resolve(this.device.cipher.decrypt(data));
+            } else {
+                // Message is encrypted
+                data =this.device.cipher.decrypt(data);
             }
+            client.destroy(); // kill client after server's response
+            resolve(data);
         });
 
         // Handle errors
         client.on('error', err => {
             debug('Error event from socket.');
+            client.destroy(); // kill client after server's response
 
             // eslint-disable-next-line max-len
             err.message = 'Error communicating with device. Make sure nothing else is trying to control it or connected to it.';
             reject(err);
-        });
-
-        client.on('close', function () {
-            debug('Connection closed')
         });
     });
 };
