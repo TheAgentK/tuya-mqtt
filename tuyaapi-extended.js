@@ -6,7 +6,7 @@ const dgram = require('dgram');
 const net = require('net');
 const timeout = require('p-timeout');
 const retry = require('retry');
-const debug = require('debug')('TuyAPI');
+const debug = require('debug')('TuyAPI-ext');
 
 // Helpers
 const Cipher = require('tuyapi/lib/cipher');
@@ -207,13 +207,13 @@ TuyaDevice.prototype.setStatus = function (options, callback) {
 
 TuyaDevice.prototype.toggle = function (callback) {
     var tuya = this;
-    tuya.resolveId().then(() => {
+    //tuya.resolveId().then(() => {
         tuya.get().then(status => {
             tuya.setStatus({
                 set: !status
             }, callback);
         });
-    });
+    //});
 }
 
 TuyaDevice.prototype.onoff = function (newStatus, callback) {
@@ -228,38 +228,39 @@ TuyaDevice.prototype.onoff = function (newStatus, callback) {
 }
 
 TuyaDevice.prototype.setColor = function (hexColor, callback) {
+    debug("Set color to", hexColor);
     var tuya = this;
     var color = new TuyaColor(tuya);
     var dps = color.setColor(hexColor);
 
-    tuya.resolveId().then(() => {
+    //tuya.resolveId().then(() => {
         tuya.get().then(status => {
             tuya.setStatus(dps, callback);
         });
-    });
+    //});
 }
 
 TuyaDevice.prototype.on = function (callback) {
     var tuya = this;
-    tuya.resolveId().then(() => {
+    //tuya.resolveId().then(() => {
         tuya.get().then(status => {
             tuya.setStatus({
                 set: true
             }, callback);
         });
-    });
+    //});
 }
 
 TuyaDevice.prototype.off = function (callback) {
     debug("off: ");
     var tuya = this;
-    tuya.resolveId().then(() => {
+    //tuya.resolveId().then(() => {
         tuya.get().then(status => {
             tuya.setStatus({
                 set: false
             }, callback);
         });
-    });
+    //});
 }
 
 module.exports = TuyaDevice;

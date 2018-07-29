@@ -1,5 +1,5 @@
 const convert = require('color-convert');
-const debug = require('debug')('TuyColor');
+const debug = require('debug')('TuyaColor');
 
 function TuyaColorLight(tuya) {
     this.tuya = tuya;
@@ -31,13 +31,13 @@ function TuyaColorLight(tuya) {
 
 TuyaColorLight.prototype._convertPercentageToVal = function (percentage) {
     var tmp = Math.round(255 * (percentage / 100));
-    this.tuyaDebug('Converted ' + percentage + ' to: ' + tmp);
+    debug('Converted ' + percentage + ' to: ' + tmp);
     return tmp;
 };
 
 TuyaColorLight.prototype._convertValToPercentage = function (val) {
     var tmp = Math.round((val / 255) * 100);
-    this.tuyaDebug('Converted ' + val + ' to: ' + tmp);
+    debug('Converted ' + val + ' to: ' + tmp);
     return tmp;
 };
 
@@ -45,15 +45,15 @@ TuyaColorLight.prototype._convertColorTemperature = function (val) {
     var tmpRange = this.colorTempMax - this.colorTempMin;
     var tmpCalc = Math.round((val / this.colorTempMax) * 100);
 
-    this.tuyaDebug('HK colorTemp Value: ' + val);
-    this.tuyaDebug('HK colorTemp scale min : ' + this.colorTempMin);
-    this.tuyaDebug('HK colorTemp scale max : ' + this.colorTempMax);
-    this.tuyaDebug('HK colorTemp range (tmpRange): ' + tmpRange);
-    this.tuyaDebug('HK colorTemp % tmpCalc: ' + tmpCalc);
+    debug('HK colorTemp Value: ' + val);
+    debug('HK colorTemp scale min : ' + this.colorTempMin);
+    debug('HK colorTemp scale max : ' + this.colorTempMax);
+    debug('HK colorTemp range (tmpRange): ' + tmpRange);
+    debug('HK colorTemp % tmpCalc: ' + tmpCalc);
 
     var tuyaColorTemp = this._convertPercentageToVal(tmpCalc);
 
-    this.tuyaDebug('HK tuyaColorTemp: ' + tuyaColorTemp);
+    debug('HK tuyaColorTemp: ' + tuyaColorTemp);
 
     return tuyaColorTemp;
 
@@ -66,34 +66,35 @@ TuyaColorLight.prototype._convertColorTemperatureToHK = function (val) {
     var tmpCalc = Math.round((tmpRange * (tuyaColorTempPercent / 100)) + this.colorTempMin);
     var hkValue = Math.round(tmpCalc);
 
-    this.tuyaDebug('Tuya color Temperature : ' + val);
-    this.tuyaDebug('Tuya color temp Percent of 255: ' + tuyaColorTempPercent + '%');
+    debug('Tuya color Temperature : ' + val);
+    debug('Tuya color temp Percent of 255: ' + tuyaColorTempPercent + '%');
 
-    this.tuyaDebug('HK colorTemp scale min : ' + this.colorTempMin);
-    this.tuyaDebug('HK colorTemp scale max : ' + this.colorTempMax);
+    debug('HK colorTemp scale min : ' + this.colorTempMin);
+    debug('HK colorTemp scale max : ' + this.colorTempMax);
 
-    this.tuyaDebug('HK Color Temp Range: ' + tmpRange);
-    this.tuyaDebug('HK range %: ' + tuyaColorTempPercent);
-    this.tuyaDebug('HK Value: ' + hkValue);
+    debug('HK Color Temp Range: ' + tmpRange);
+    debug('HK range %: ' + tuyaColorTempPercent);
+    debug('HK Value: ' + hkValue);
 
     return hkValue;
 
 };
-
-
-TuyaColorLight.prototype.tuyaDebug = function (args) {
-    debug(args);
+TuyaColorLight.prototype._ValIsHex = function (h) {
+    debug("Check if value is hex", h);
+    var a = parseInt(h, 16);
+    var result = (a.toString(16) === h.toLowerCase());
+    return result;
 };
 
 TuyaColorLight.prototype._getAlphaHex = function (brightness) {
     // for (var i = 1; i >= 0; i -= 0.01) {
     var i = brightness / 100;
-    this.tuyaDebug('input brightness: ' + brightness + ' and i is ' + i);
+    debug('input brightness: ' + brightness + ' and i is ' + i);
     var alpha = Math.round(i * 255);
     var hex = (alpha + 0x10000).toString(16).substr(-2);
     var perc = Math.round(i * 100);
 
-    this.tuyaDebug('alpha percent: ' + perc + '% hex: ' + hex + ' alpha: ' + alpha);
+    debug('alpha percent: ' + perc + '% hex: ' + hex + ' alpha: ' + alpha);
     return hex;
 };
 
@@ -107,26 +108,26 @@ TuyaColorLight.prototype.setSaturation = function (value, callback) {
     this.colorMode = colorMode;
     this.saturation = saturation;
 
-    this.tuyaDebug(' SET SATURATION: ' + value);
+    debug(' SET SATURATION: ' + value);
 };
 
 TuyaColorLight.prototype.setBrightness = function (value, callback) {
     this.brightness = value;
     var newValue = this._convertPercentageToVal(value);
-    this.tuyaDebug("BRIGHTNESS from UI: " + value + ' Converted from 100 to 255 scale: ' + newValue);
+    debug("BRIGHTNESS from UI: " + value + ' Converted from 100 to 255 scale: ' + newValue);
 }
 
 TuyaColorLight.prototype.setHue = function (value, callback) {
-    this.tuyaDebug('SET HUE: ' + value);
-    this.tuyaDebug('Saturation Value: ' + this.color.S);
+    debug('SET HUE: ' + value);
+    debug('Saturation Value: ' + this.color.S);
     this.color.H = value;
 
     if (value === 0 && this.color.S === 0) {
         this.colorMode = 'white';
-        this.tuyaDebug('SET Color Mode: \'white\'');
+        debug('SET Color Mode: \'white\'');
     } else {
         this.colorMode = 'colour';
-        this.tuyaDebug('SET Color Mode: \'colour\' -- dahhhhhh british spelling \'coulour\' really is annoying... why you gotta be special?');
+        debug('SET Color Mode: \'colour\' -- dahhhhhh british spelling \'coulour\' really is annoying... why you gotta be special?');
     }
 
 
@@ -144,10 +145,19 @@ TuyaColorLight.prototype.setHSL = function (hue, saturation, brightness) {
     this.setHue(hue);
 }
 
-TuyaColorLight.prototype.setColor = function (hexColor) {
-    var color = convert.hex.hsl(hexColor);
-    this.tuyaDebug(color);
-    this.setHSL(color[0], color[1], 100);
+TuyaColorLight.prototype.setColor = function (colorValue) {
+    debug("Recieved color", colorValue);
+
+    if (this._ValIsHex(colorValue)) {
+        debug("Color is Hex");
+        var color = convert.hex.hsl(colorValue);
+    } else {
+        debug("Color is HSL");
+        var color = colorValue.split(",");
+    }
+    debug("Converted color as HSL", color);
+
+    this.setHSL(color[0], color[1], color[2]);
     return this.getDps();
 }
 
@@ -188,7 +198,7 @@ TuyaColorLight.prototype.getDps = function () {
         '5': lightColor
         // '6' : hexColor + hexColor + 'ff'
     };
-    this.tuyaDebug(dpsTmp);
+    debug(dpsTmp);
     return dpsTmp;
 }
 

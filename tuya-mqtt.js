@@ -2,7 +2,7 @@ const mqtt = require('mqtt');
 const TuyaDevice = require('./tuyaapi-extended');
 const CronJob = require('cron').CronJob;
 const crypto = require('crypto');
-const debug = require('debug')('TuyAPI-ext');
+const debug = require('debug')('TuyAPI-mqtt');
 const autoUpdate = {};
 
 /**
@@ -114,6 +114,7 @@ client.on('message', function (topic, message) {
         if (type == "lightbulb" && exec == "color" && topic.length == 6) {
             message = message.toString();
             message = message.toLowerCase();
+            debug("Recevied color: " + message);
             var tuya = createDevice(topic[2], topic[3], topic[4], type);
             tuya.setColor(message, function (status) {
                 publishStatus(tuya, bmap(status));
