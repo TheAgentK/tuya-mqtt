@@ -53,9 +53,17 @@ All questions regarding the TuyaAPI please ask in the project https://github.com
 
 #### create items-file
 ```
-Switch tuya_kitchen_coffeemachine_mqtt "Steckdose Kaffeemaschine" <socket> (Kitchen, gTuya, gTuyaSwitches, GAtAwayOff) ["Switchable"] {mqtt="<[broker:tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state:state:default:.*], >[broker:tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/on:command:ON:true], >[broker:tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/off:command:OFF:false]"}
+Switch tuya_kitchen_coffeemachine_mqtt "Steckdose Kaffeemaschine" <socket> (Kitchen, gTuya, gTuyaSwitches, GAtAwayOff) ["Switchable"] {
+    mqtt="<[broker:tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state:state:default:.*], 
+          >[broker:tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/on:command:ON:true], 
+          >[broker:tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/off:command:OFF:false]"
+}
 
-Switch tuya_livingroom_ledstrip_tv "LED Regal" <lightbulb> (LivingDining, Wohnzimmer, gTuya, gTuyaLights, GAtAwayOff) ["Lighting"] {mqtt="<[broker:tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state:state:default:.*], >[broker:tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/on:command:ON:true], >[broker:tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/off:command:OFF:false]"}
+Switch tuya_livingroom_ledstrip_tv "LED Regal" <lightbulb> (LivingDining, Wohnzimmer, gTuya, gTuyaLights, GAtAwayOff) ["Lighting"] {
+    mqtt="<[broker:tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state:state:default:.*], 
+          >[broker:tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/on:command:ON:true], 
+          >[broker:tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/off:command:OFF:false]"
+}
 ```
 
 ## Useage
