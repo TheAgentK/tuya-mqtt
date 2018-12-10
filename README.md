@@ -4,6 +4,9 @@ This is a wrapper script for the Project codetheweb/tuyapi. https://github.com/c
 
 This project provides an MQTT client for communication with the home automation devices.
 
+:exclamation: There is a greate Step-By-Step guide from user HolgiHab at openhab community ([Step-By-Step Guide](
+https://community.openhab.org/t/step-by-step-guide-for-adding-tuya-bulbs-smart-life-to-oh2-using-tuya-mqtt-js-by-agentk/59371)). This guide is not only for light bulbs, but also applies to sockets. :exclamation:
+
 ## Instructions:
 
 Download this project to your openhab2-script-folder "/etc/openhab2/scripts" and install tuyapi from the same folder that the tuya-mqtt.js is in
