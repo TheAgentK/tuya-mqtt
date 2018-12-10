@@ -49,8 +49,8 @@ There are some reliability issues with tuyapi. Latest changes changed the syntax
 
 All questions regarding the TuyaAPI please ask in the project https://github.com/codetheweb/tuyapi .
 
-## Example items
 
+## Example items
 #### simple switch on/off
 ```
 Switch tuya_kitchen_coffeemachine_mqtt "Steckdose Kaffeemaschine" <socket> (<GROUPS>) ["Switchable"] {
@@ -65,6 +65,7 @@ Switch tuya_livingroom_ledstrip_tv "LED Regal" <lightbulb> (<GROUPS>) ["Lighting
           >[broker:tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/off:command:OFF:false]"
 }
 ```
+
 #### change color of lightbulb
 ```
 # .items
@@ -101,8 +102,7 @@ end
 
 ```
 
-## Useage
-### Basic UI sitemap
+#### Basic UI sitemap
 ```
 Switch item=tuya_kitchen_coffeemachine_mqtt mappings=[ON="On", OFF="Off"]
 Switch item=tuya_livingroom_ledstrip_tv mappings=[ON="On", OFF="Off"]
