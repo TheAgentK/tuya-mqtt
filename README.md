@@ -51,7 +51,7 @@ All questions regarding the TuyaAPI please ask in the project https://github.com
 
 ## Example items
 
-#### create items-file
+#### simple switch on/off
 ```
 Switch tuya_kitchen_coffeemachine_mqtt "Steckdose Kaffeemaschine" <socket> (<GROUPS>) ["Switchable"] {
     mqtt="<[broker:tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state:state:default:.*], 
@@ -65,18 +65,57 @@ Switch tuya_livingroom_ledstrip_tv "LED Regal" <lightbulb> (<GROUPS>) ["Lighting
           >[broker:tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/off:command:OFF:false]"
 }
 ```
+#### change color of lightbulb
+```
+# .items
+Group gTuyaLivingColor "Tuya color group" <lightbulb>
+Color tuya_livingroom_colorpicker "Stehlampe farbe" (LivingDining, Wohnzimmer)
+
+String tuya_livingroom_ledstrip_tv_color "Set color [%s]" (gTuyaLivingColor, LivingDining, Wohnzimmer) {
+    mqtt=">[broker:tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/color:command:*:default]"
+}
+
+# .rules
+import org.openhab.core.library.types.HSBType;
+
+rule "Set HSB value of item RGBLed to RGB color value"
+when
+	Item tuya_livingroom_colorpicker received command
+then
+	var appName = "Colorpicker.livingroom"
+	var color = receivedCommand.toString;
+
+    // get all colors and send it via mqtt if light ist enabled
+	gTuyaLivingColor.members.forEach[ i |
+		var name = i.name;
+		var stateName = name.toString.split("_color").get(0);
+		var stateItem = gTuyaLights.allMembers.filter [ conf | conf.name.contains(stateName.toString) ].head;
+
+		if(stateItem.state == ON){
+			logInfo(appName, name + " change to color: " + color);
+			i.sendCommand(color);
+			Thread::sleep(400);
+		}
+	]
+end
+
+```
 
 ## Useage
 ### Basic UI sitemap
 ```
 Switch item=tuya_kitchen_coffeemachine_mqtt mappings=[ON="On", OFF="Off"]
 Switch item=tuya_livingroom_ledstrip_tv mappings=[ON="On", OFF="Off"]
+
+
+# Colorpicker for Lightbulbs
+Colorpicker item=tuya_livingroom_colorpicker label="RGB Lampenfarbe" icon="slider" sendFrequency=30000
 ```
 
 ## Related Projects:
+- https://github.com/codetheweb/tuyapi
 - https://github.com/unparagoned/njsTuya
 - https://github.com/clach04/python-tuya
-- https://github.com/codetheweb/tuyapi
 - https://github.com/Marcus-L/m4rcus.TuyaCore
 - Specs: https://docs.tuya.com/en/cloudapi/cloud_access.html
 
