@@ -87,7 +87,7 @@ function publishStatus(device, status) {
             var tuyaIP = device.options.ip;
 
             if (tuyaID != undefined && tuyaKey != undefined && tuyaIP != undefined) {
-                var topic = "tuya/" + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/state";
+                var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/state";
                 mqtt_client.publish(topic, status, {
                     retain: true,
                     qos: 2
@@ -95,6 +95,42 @@ function publishStatus(device, status) {
                 debug("mqtt status updated to:" + topic + " -> " + status);
             } else {
                 debug("mqtt status not updated");
+            }
+        } catch (e) {
+            debug(e);
+        }
+    }
+}
+
+/**
+ * publish all dps-values to topic
+ * @param  {TuyaDevice} device
+ * @param  {Object} dps
+ */
+function publishDPS(device, dps) {
+    if (mqtt_client.connected == true) {
+        try {
+            var type = device.type;
+            var tuyaID = device.options.id;
+            var tuyaKey = device.options.key;
+            var tuyaIP = device.options.ip;
+
+            if (tuyaID != undefined && tuyaKey != undefined && tuyaIP != undefined) {
+                var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/dps";
+                mqtt_client.publish(topic, JSON.stringify(dps), {
+                    retain: true,
+                    qos: 2
+                });
+                Object.keys(dps).forEach(function (key) {
+                    var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/dps/" + key;
+                    mqtt_client.publish(topic, dps[key], {
+                        retain: true,
+                        qos: 2
+                    });
+                });
+                debug("mqtt dps updated to:" + topic + " -> " + dps);
+            } else {
+                debug("mqtt dps not updated");
             }
         } catch (e) {
             debug(e);
@@ -113,6 +149,7 @@ TuyaDevice.onAll('data', function (data) {
         status = true;
     }
     publishStatus(this, bmap(status));
+    publishDPS(this, data.dps);
 });
 
 /**
