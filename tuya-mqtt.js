@@ -8,17 +8,9 @@ function bmap(istate) {
     return istate ? 'ON' : "OFF";
 }
 
-function bmap(istate) {
-    return istate ? 'ON' : "OFF";
-}
-
 var connected = undefined;
 
-const CONFIG = {
-    host: 'localhost',
-    port: 1883,
-    topic: "tuya/"
-}
+const CONFIG = require("./config");
 
 const mqtt_client = mqtt.connect({
     host: CONFIG.host,
