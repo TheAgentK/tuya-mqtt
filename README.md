@@ -41,10 +41,15 @@ Change device state:
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/on
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/off
 
-Color for lightbulb
+Color for lightbulb:
 
     Example:
     tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/color // Color as Payload as hexColor
+
+Read data from device:
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/dps // returns JSON.stringify(dps) values
+
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/dps/<tuya-dps-id> // return single dps data value
 ```
 
 #### Issues
