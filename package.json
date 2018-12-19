@@ -10,12 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "color-convert": "^1.9.3",
-    "cron": "^1.5.1",
-    "crypto": "^1.0.1",
     "debug": "^3.2.6",
     "mqtt": "^2.18.8",
-    "supports-color": "^5.5.0",
-    "tuyapi": "github:codetheweb/tuyapi",
-    "yargs": "^11.1.0"
+    "tuyapi": "github:codetheweb/tuyapi"
   }
 }
