@@ -47,7 +47,7 @@ Color for lightbulb:
     tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/color // Color as Payload as hexColor
 
 Read data from device:
-    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/dps // returns JSON.stringify(dps) values
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/dps // returns JSON.stringify(dps) values, use with care, does not always contain all dps values
 
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/dps/<tuya-dps-id> // return single dps data value
 ```
