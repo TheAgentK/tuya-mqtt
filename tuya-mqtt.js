@@ -2,10 +2,16 @@ const mqtt = require('mqtt');
 const TuyaDevice = require('./tuya-device');
 const debug = require('debug')('tuya-mqtt');
 const debugMqtt = require('debug')('mqtt');
+const debugTuya = require('debug')('tuyAPI-Events');
+const debugError = require('debug')('error');
 var cleanup = require('./cleanup').Cleanup(onExit);
 
 function bmap(istate) {
     return istate ? 'ON' : "OFF";
+}
+
+function boolToString(istate) {
+    return istate ? 'true' : "false";
 }
 
 var connected = undefined;
@@ -69,7 +75,7 @@ mqtt_client.on('message', function (topic, message) {
             }
         }
     } catch (e) {
-        debug(e);
+        debugError(e);
     }
 });
 
@@ -92,12 +98,12 @@ function publishStatus(device, status) {
                     retain: true,
                     qos: 2
                 });
-                debug("mqtt status updated to:" + topic + " -> " + status);
+                debugTuya("mqtt status updated to:" + topic + " -> " + status);
             } else {
-                debug("mqtt status not updated");
+                debugTuya("mqtt status not updated");
             }
         } catch (e) {
-            debug(e);
+            debugError(e);
         }
     }
 }
@@ -117,23 +123,27 @@ function publishDPS(device, dps) {
 
             if (tuyaID != undefined && tuyaKey != undefined && tuyaIP != undefined) {
                 var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/dps";
-                mqtt_client.publish(topic, JSON.stringify(dps), {
+                var data = JSON.stringify(dps);
+                debugTuya("mqtt dps updated to:" + topic + " -> ", data);
+                mqtt_client.publish(topic, data, {
                     retain: true,
                     qos: 2
                 });
+
                 Object.keys(dps).forEach(function (key) {
                     var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/dps/" + key;
-                    mqtt_client.publish(topic, dps[key], {
+                    var data = JSON.stringify(dps[key]);
+                    debugTuya("mqtt dps updated to:" + topic + " -> dps[" + key + "]", data);
+                    mqtt_client.publish(topic, data, {
                         retain: true,
                         qos: 2
                     });
                 });
-                debug("mqtt dps updated to:" + topic + " -> " + dps);
             } else {
-                debug("mqtt dps not updated");
+                debugTuya("mqtt dps not updated");
             }
         } catch (e) {
-            debug(e);
+            debugError(e);
         }
     }
 }
@@ -143,13 +153,17 @@ function publishDPS(device, dps) {
  * @see TuyAPI (https://github.com/codetheweb/tuyapi)
  */
 TuyaDevice.onAll('data', function (data) {
-    debug('Data from device ' + this.type + ' :', data);
-    var status = data.dps['1'];
-    if (this.type == "lightbulb" && status == undefined) {
-        status = true;
+    try {
+        debugTuya('Data from device ' + this.type + ' :', data);
+        var status = data.dps['1'];
+        if (this.type == "lightbulb" && status == undefined) {
+            status = true;
+        }
+        publishStatus(this, bmap(status));
+        publishDPS(this, data.dps);
+    } catch (e) {
+        debugError(e);
     }
-    publishStatus(this, bmap(status));
-    publishDPS(this, data.dps);
 });
 
 /**
