@@ -1,6 +1,6 @@
 devices/
 test/
-
+config.json
 
 # Logs
 logs

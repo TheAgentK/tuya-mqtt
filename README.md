@@ -21,6 +21,12 @@ Ignore all Warnings.
 
 This involves MIM of the connection. Instructions can be found here: https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md
 
+Create your configuration file:
+```
+cp config.json.sample config.json
+nano config.json // edit the configuration file
+```
+
 Start command
 ```
 node tuya-mqtt.js
