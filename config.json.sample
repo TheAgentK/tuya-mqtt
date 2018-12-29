@@ -1,5 +1,7 @@
 {
     "host": "localhost",
     "port": 1883,
-    "topic": "tuya/"
+    "topic": "tuya/",
+    "mqtt_user": "",
+    "mqtt_pass": ""
 }

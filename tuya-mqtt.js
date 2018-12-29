@@ -27,7 +27,9 @@ try {
 
 const mqtt_client = mqtt.connect({
     host: CONFIG.host,
-    port: CONFIG.port
+    port: CONFIG.port,
+    username: CONFIG.mqtt_user,
+    password: CONFIG.mqtt_pass,
 });
 
 mqtt_client.on('connect', function (err) {
