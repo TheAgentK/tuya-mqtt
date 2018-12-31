@@ -15,12 +15,21 @@ function boolToString(istate) {
 }
 
 var connected = undefined;
+var CONFIG = undefined;
 
-const CONFIG = require("./config");
+try {
+    CONFIG = require("./config");
+} catch (e) {
+    console.error("Configuration file not found")
+    debugError(e)
+    process.exit(1)
+}
 
 const mqtt_client = mqtt.connect({
     host: CONFIG.host,
-    port: CONFIG.port
+    port: CONFIG.port,
+    username: CONFIG.mqtt_user,
+    password: CONFIG.mqtt_pass,
 });
 
 mqtt_client.on('connect', function (err) {
@@ -204,5 +213,5 @@ var tester = new MQTT_Tester();
  */
 function onExit() {
     TuyaDevice.disconnectAll();
-    tester.destroy();
+    if(tester) tester.destroy();
 };

@@ -1,5 +1,0 @@
-{
-    "host": "localhost",
-    "port": 1883,
-    "topic": "tuya/"
-}
