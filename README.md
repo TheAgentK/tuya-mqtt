@@ -17,8 +17,6 @@ cd tuyaapi_mqtt
 npm install //downloads codetheweb/tuyapi
 ```
 
-Ignore all Warnings.
-
 This involves MIM of the connection. Instructions can be found here: https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md
 
 Create your configuration file:
