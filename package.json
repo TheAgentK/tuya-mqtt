@@ -13,5 +13,9 @@
     "debug": "^3.2.6",
     "mqtt": "^2.18.8",
     "tuyapi": "github:codetheweb/tuyapi"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/TheAgentK/tuya-mqtt.git"
   }
 }
