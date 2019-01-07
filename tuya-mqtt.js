@@ -74,10 +74,14 @@ mqtt_client.on('message', function (topic, message) {
             debug("message", message);
             var device = new TuyaDevice(options);
 
-            if (exec == "command") {
-                var status = topic[6];
-                device.onoff(status);
-            }
+			if (exec == "command") {
+				var status = topic[6];
+				if ( status == null ) {
+					device.onoff(message);
+				} else {
+					device.onoff(status);
+				}
+			}
             if (exec == "color") {
                 var color = message;
                 device.setColor(color);
