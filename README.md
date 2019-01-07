@@ -122,12 +122,13 @@ end
 With OpenHAB 2.X MQTT bindings you can add devices using a generic MQTT Thing via PaperUI or 
 configuration files.  For PaperUI simply at the generic MQTT Thing and set the state and
 command topics as follows:
-
+```
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state	
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command
-	
+```	
 If you prefer using configuration files vs PaperUI, it should look something like this:
 
+```
 Bridge mqtt:broker:myUnsecureBroker [ host="192.168.0.42", secure=false ]
 {
     Thing mqtt:topic:mything {
@@ -135,7 +136,7 @@ Bridge mqtt:broker:myUnsecureBroker [ host="192.168.0.42", secure=false ]
         Type switch : lamp "Kitchen Lamp" [ stateTopic="tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state", commandTopic="tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command" ]
     }
 }
-
+```
 For a light with color you would need a separate channel with the command topic set to
 tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/color and link that to your 
 color item.
