@@ -38,13 +38,17 @@ MQTT Topic
 Current device state:
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state
 
-Change device state:
+Change device state (by topic):
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/<STATE>
-
+	
     Example:
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/on
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/off
 
+Change device state (by payload)
+Use with OpenHAB 2.X MQTT bindings or others where only a single command topic is preferred
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command // State as Payload (on,off)	
+	
 Color for lightbulb:
 
     Example:
@@ -62,7 +66,7 @@ There are some reliability issues with tuyapi. Latest changes changed the syntax
 All questions regarding the TuyaAPI please ask in the project https://github.com/codetheweb/tuyapi .
 
 
-## Example items
+## Example items for OpenHAB 1.x Bindings (still works with >2.4 but only if legacy 1.x MQTT bindings are enabled)
 #### simple switch on/off
 ```
 Switch tuya_kitchen_coffeemachine_mqtt "Steckdose Kaffeemaschine" <socket> (<GROUPS>) ["Switchable"] {
@@ -77,7 +81,6 @@ Switch tuya_livingroom_ledstrip_tv "LED Regal" <lightbulb> (<GROUPS>) ["Lighting
           >[broker:tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/off:command:OFF:false]"
 }
 ```
-
 #### change color of lightbulb
 ```
 # .items
@@ -113,6 +116,30 @@ then
 end
 
 ```
+## Example items for OpenHAB 2.4 Bindings
+#### simple switch on/off
+
+With OpenHAB 2.X MQTT bindings you can add devices using a generic MQTT Thing via PaperUI or 
+configuration files.  For PaperUI simply at the generic MQTT Thing and set the state and
+command topics as follows:
+```
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state	
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command
+```	
+If you prefer using configuration files vs PaperUI, it should look something like this:
+
+```
+Bridge mqtt:broker:myUnsecureBroker [ host="192.168.0.42", secure=false ]
+{
+    Thing mqtt:topic:mything {
+    Channels:
+        Type switch : tuya_kitchen_coffeemachine_mqtt "Steckdose Kaffeemaschine" [ stateTopic="tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state", commandTopic="tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command" ]
+    }
+}
+```
+For a light with color you would need a separate channel with the command topic set to
+tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/color and link that to your 
+color item.
 
 #### Basic UI sitemap
 ```

@@ -76,7 +76,11 @@ mqtt_client.on('message', function (topic, message) {
 
             if (exec == "command") {
                 var status = topic[6];
-                device.onoff(status);
+                if ( status == null ) {
+                    device.onoff(message);
+                } else {
+                    device.onoff(status);
+                }
             }
             if (exec == "color") {
                 var color = message;
