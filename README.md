@@ -151,6 +151,12 @@ Switch item=tuya_livingroom_ledstrip_tv mappings=[ON="On", OFF="Off"]
 Colorpicker item=tuya_livingroom_colorpicker label="RGB Lampenfarbe" icon="slider" sendFrequency=30000
 ```
 
+## Contributors
+- [TheAgentK](https://github.com/TheAgentK)
+- [tsightler](https://github.com/tsightler)
+- [Tycale](https://github.com/Tycale)
+
+
 ## Related Projects:
 - https://github.com/codetheweb/tuyapi
 - https://github.com/unparagoned/njsTuya
