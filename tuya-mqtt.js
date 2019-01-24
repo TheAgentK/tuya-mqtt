@@ -25,6 +25,10 @@ try {
     process.exit(1)
 }
 
+if (typeof CONFIG.qos == "undefined") {
+    CONFIG.qos = 2;
+}
+
 const mqtt_client = mqtt.connect({
     host: CONFIG.host,
     port: CONFIG.port,
@@ -107,7 +111,7 @@ function publishStatus(device, status) {
             var tuyaKey = device.options.key;
             var tuyaIP = device.options.ip;
 
-            if (tuyaID != undefined && tuyaKey != undefined && tuyaIP != undefined) {
+            if (typeof tuyaID != "undefined" && typeof tuyaKey != "undefined" && typeof tuyaIP != "undefined") {
                 var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/state";
                 mqtt_client.publish(topic, status, {
                     retain: true,
@@ -136,7 +140,7 @@ function publishDPS(device, dps) {
             var tuyaKey = device.options.key;
             var tuyaIP = device.options.ip;
 
-            if (tuyaID != undefined && tuyaKey != undefined && tuyaIP != undefined) {
+            if (typeof tuyaID != "undefined" && typeof tuyaKey != "undefined" && typeof tuyaIP != "undefined") {
                 var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/dps";
                 var data = JSON.stringify(dps);
                 debugTuya("mqtt dps updated to:" + topic + " -> ", data);
@@ -171,7 +175,7 @@ TuyaDevice.onAll('data', function (data) {
     try {
         debugTuya('Data from device ' + this.type + ' :', data);
         var status = data.dps['1'];
-        if (status != undefined) {
+        if (typeof status != "undefined") {
             publishStatus(this, bmap(status));
         }
         publishDPS(this, data.dps);
