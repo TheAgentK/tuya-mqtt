@@ -36,7 +36,9 @@ mqtt_client.on('connect', function (err) {
     debugMqtt("Verbindung mit MQTT-Server hergestellt");
     connected = true;
     var topic = CONFIG.topic + '#';
-    mqtt_client.subscribe(topic);
+    mqtt_client.subscribe(topic, {
+        qos: CONFIG.qos
+    });
 });
 
 mqtt_client.on("reconnect", function (error) {
@@ -76,7 +78,7 @@ mqtt_client.on('message', function (topic, message) {
 
             if (exec == "command") {
                 var status = topic[6];
-                if ( status == null ) {
+                if (status == null) {
                     device.onoff(message);
                 } else {
                     device.onoff(status);
@@ -109,7 +111,7 @@ function publishStatus(device, status) {
                 var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/state";
                 mqtt_client.publish(topic, status, {
                     retain: true,
-                    qos: 2
+                    qos: CONFIG.qos
                 });
                 debugTuya("mqtt status updated to:" + topic + " -> " + status);
             } else {
@@ -140,7 +142,7 @@ function publishDPS(device, dps) {
                 debugTuya("mqtt dps updated to:" + topic + " -> ", data);
                 mqtt_client.publish(topic, data, {
                     retain: true,
-                    qos: 2
+                    qos: CONFIG.qos
                 });
 
                 Object.keys(dps).forEach(function (key) {
@@ -149,7 +151,7 @@ function publishDPS(device, dps) {
                     debugTuya("mqtt dps updated to:" + topic + " -> dps[" + key + "]", data);
                     mqtt_client.publish(topic, data, {
                         retain: true,
-                        qos: 2
+                        qos: CONFIG.qos
                     });
                 });
             } else {
@@ -169,10 +171,9 @@ TuyaDevice.onAll('data', function (data) {
     try {
         debugTuya('Data from device ' + this.type + ' :', data);
         var status = data.dps['1'];
-        if (this.type == "lightbulb" && status == undefined) {
-            status = true;
+        if (status != undefined) {
+            publishStatus(this, bmap(status));
         }
-        publishStatus(this, bmap(status));
         publishDPS(this, data.dps);
     } catch (e) {
         debugError(e);
@@ -217,5 +218,5 @@ var tester = new MQTT_Tester();
  */
 function onExit() {
     TuyaDevice.disconnectAll();
-    if(tester) tester.destroy();
+    if (tester) tester.destroy();
 };
