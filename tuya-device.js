@@ -1,79 +1,8 @@
 const TuyAPI = require('tuyapi');
 const TuyColor = require('./tuya-color');
 const debug = require('debug')('TuyAPI-device');
-const debugTuya = require('debug')('TuyAPI-ext');
+const debugColor = require('debug')('TuyAPI-device-color');
 const debugTimer = require('debug')('TuyAPI-device-timer');
-
-/**
- * Sets a property on a device.
- * @param {Object} options
- * @param {Number} [options.dps=1] DPS index to set
- * @param {*} options.set value to set
- * @example
- * // set default property
- * tuya.set({set: true}).then(() => console.log('device was changed'))
- * @example
- * // set custom property
- * tuya.set({dps: 2, set: true}).then(() => console.log('device was changed'))
- * @returns {Promise<Boolean>} - returns `true` if the command succeeded
- */
-const Parser = require('tuyapi/lib/message-parser')
-TuyAPI.prototype.set = function (options) {
-    let dps = {};
-
-    if (options.dps != undefined || options.set != undefined) {
-        if (options.dps === undefined) {
-            dps = {
-                1: options.set
-            };
-        } else {
-            dps = {
-                [options.dps.toString()]: options.set
-            };
-        }
-    } else {
-        dps = options;
-    }
-
-    const now = new Date();
-    const timeStamp = (parseInt(now.getTime() / 1000, 10)).toString();
-
-    const payload = {
-        devId: this.device.id,
-        uid: '',
-        t: timeStamp,
-        dps
-    };
-
-    debugTuya('Payload:', this.device.ip);
-    debugTuya(payload);
-
-    // Encrypt data
-    const data = this.device.cipher.encrypt({
-        data: JSON.stringify(payload)
-    });
-
-    // Create MD5 signature
-    const md5 = this.device.cipher.md5('data=' + data +
-        '||lpv=' + this.device.version +
-        '||' + this.device.key);
-
-    // Create byte buffer from hex data
-    const thisData = Buffer.from(this.device.version + md5 + data);
-    const buffer = Parser.encode({
-        data: thisData,
-        commandByte: 7 // 0x07
-    });
-
-    // Send request to change status
-    return new Promise((resolve, reject) => {
-        this._send(buffer, 7, false).then(() => {
-            resolve(true);
-        }).catch(error => {
-            reject(error);
-        });
-    });
-}
 
 /**
  *
@@ -200,22 +129,23 @@ var TuyaDevice = (function () {
         resetTimer();
     }
 
-    TuyaDevice.prototype.onoff = function (newStatus, callback) {
+    TuyaDevice.prototype.switch = function (newStatus, callback) {
         newStatus = newStatus.toLowerCase();
-        debug("onoff: " + newStatus);
+        debug("switch: " + newStatus);
         if (newStatus == "on") {
-            this.on(callback);
+            this.switchOn(callback);
         }
         if (newStatus == "off") {
-            this.off(callback);
+            this.switchOff(callback);
         }
         if (newStatus == "toggle") {
             this.toggle(callback);
         }
     }
 
-    TuyaDevice.prototype.on = function (callback) {
+    TuyaDevice.prototype.switchOn = function (callback) {
         var device = this;
+        debug("switch -> ON");
         device.get().then(status => {
             device.set({
                 set: true
@@ -223,8 +153,9 @@ var TuyaDevice = (function () {
         });
     }
 
-    TuyaDevice.prototype.off = function (callback) {
+    TuyaDevice.prototype.switchOff = function (callback) {
         var device = this;
+        debug("switch -> OFF");
         device.get().then(status => {
             device.set({
                 set: false
@@ -242,14 +173,18 @@ var TuyaDevice = (function () {
     }
 
     TuyaDevice.prototype.setColor = function (hexColor, callback) {
-        debug("Set color to", hexColor);
+        debugColor("Set color to: ", hexColor);
         var device = this;
         var tuya = this.device;
         var color = new TuyColor(tuya);
         var dps = color.setColor(hexColor);
+        debugColor("dps values:", dps);
 
         device.get().then(status => {
-            device.set(dps, callback);
+            device.set({
+                multiple: true,
+                data: dps
+            }, callback);
         });
         resetTimer();
     }

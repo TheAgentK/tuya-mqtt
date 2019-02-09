@@ -1,6 +1,7 @@
 const mqtt = require('mqtt');
 const TuyaDevice = require('./tuya-device');
 const debug = require('debug')('tuya-mqtt');
+const debugColor = require('debug')('color');
 const debugMqtt = require('debug')('mqtt');
 const debugTuya = require('debug')('tuyAPI-Events');
 const debugError = require('debug')('error');
@@ -28,6 +29,9 @@ try {
 if (typeof CONFIG.qos == "undefined") {
     CONFIG.qos = 2;
 }
+if (typeof CONFIG.retain == "undefined") {
+    CONFIG.retain = false;
+}
 
 const mqtt_client = mqtt.connect({
     host: CONFIG.host,
@@ -41,6 +45,7 @@ mqtt_client.on('connect', function (err) {
     connected = true;
     var topic = CONFIG.topic + '#';
     mqtt_client.subscribe(topic, {
+        retain: CONFIG.retain,
         qos: CONFIG.qos
     });
 });
@@ -62,10 +67,20 @@ mqtt_client.on("error", function (error) {
 /**
  * execute function on topic message
  */
+function boolToString(istate) {
+    return istate == 1 ? 'on' : "off";
+}
+
+function convertMessage(message) {
+    var status = message.toString();
+    status = boolToString(status);
+    status = status.toLowerCase();
+    return status;
+}
+
 mqtt_client.on('message', function (topic, message) {
     try {
-        message = message.toString();
-        message = message.toLowerCase();
+        var cMessage = convertMessage(message);
         var topic = topic.split("/");
         var options = {
             type: topic[1],
@@ -77,19 +92,22 @@ mqtt_client.on('message', function (topic, message) {
 
         if (options.type == "socket" || options.type == "lightbulb") {
             debug("device", options);
-            debug("message", message);
+            debug("message", cMessage);
             var device = new TuyaDevice(options);
 
             if (exec == "command") {
                 var status = topic[6];
                 if (status == null) {
-                    device.onoff(message);
+                    device.switch(cMessage);
                 } else {
-                    device.onoff(status);
+                    device.switch(status);
                 }
             }
             if (exec == "color") {
-                var color = message;
+                var color = message.toString();
+                color = color.toLowerCase();
+                debugColor("topic: ", topic);
+                debugColor("onColor: ", color);
                 device.setColor(color);
             }
         }
@@ -114,7 +132,7 @@ function publishStatus(device, status) {
             if (typeof tuyaID != "undefined" && typeof tuyaKey != "undefined" && typeof tuyaIP != "undefined") {
                 var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/state";
                 mqtt_client.publish(topic, status, {
-                    retain: true,
+                    retain: CONFIG.retain,
                     qos: CONFIG.qos
                 });
                 debugTuya("mqtt status updated to:" + topic + " -> " + status);
@@ -125,6 +143,10 @@ function publishStatus(device, status) {
             debugError(e);
         }
     }
+}
+
+function publishColorState(device, state) {
+
 }
 
 /**
@@ -145,7 +167,7 @@ function publishDPS(device, dps) {
                 var data = JSON.stringify(dps);
                 debugTuya("mqtt dps updated to:" + topic + " -> ", data);
                 mqtt_client.publish(topic, data, {
-                    retain: true,
+                    retain: CONFIG.retain,
                     qos: CONFIG.qos
                 });
 
@@ -154,7 +176,7 @@ function publishDPS(device, dps) {
                     var data = JSON.stringify(dps[key]);
                     debugTuya("mqtt dps updated to:" + topic + " -> dps[" + key + "]", data);
                     mqtt_client.publish(topic, data, {
-                        retain: true,
+                        retain: CONFIG.retain,
                         qos: CONFIG.qos
                     });
                 });
