@@ -103,6 +103,14 @@ mqtt_client.on('message', function (topic, message) {
                     device.switch(status);
                 }
             }
+            if (exec == "dps") {
+                var status = topic[6];
+                device.set(status);
+            }
+            if (exec == "dpsJ") {
+                var status = topic[6];
+                device.set(JSON.parse(status));
+            }
             if (exec == "color") {
                 var color = message.toString();
                 color = color.toLowerCase();
@@ -110,6 +118,7 @@ mqtt_client.on('message', function (topic, message) {
                 debugColor("onColor: ", color);
                 device.setColor(color);
             }
+            
         }
     } catch (e) {
         debugError(e);
