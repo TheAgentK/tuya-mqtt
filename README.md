@@ -155,6 +155,7 @@ Colorpicker item=tuya_livingroom_colorpicker label="RGB Lampenfarbe" icon="slide
 - [TheAgentK](https://github.com/TheAgentK)
 - [tsightler](https://github.com/tsightler)
 - [Tycale](https://github.com/Tycale)
+- [crashdummymch](https://github.com/crashdummymch)
 
 
 ## Related Projects:
