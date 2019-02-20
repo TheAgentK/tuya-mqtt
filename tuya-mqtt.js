@@ -1,10 +1,9 @@
 const mqtt = require('mqtt');
 const TuyaDevice = require('./tuya-device');
-const debug = require('debug')('tuya-mqtt');
-const debugColor = require('debug')('color');
-const debugMqtt = require('debug')('mqtt');
-const debugTuya = require('debug')('tuyAPI-Events');
-const debugError = require('debug')('error');
+const debug = require('debug')('TuyAPI:mqtt');
+const debugColor = require('debug')('TuyAPI:mqtt:color');
+const debugTuya = require('debug')('TuyAPI:mqtt:device');
+const debugError = require('debug')('TuyAPI:mqtt:error');
 var cleanup = require('./cleanup').Cleanup(onExit);
 
 function bmap(istate) {
@@ -41,7 +40,7 @@ const mqtt_client = mqtt.connect({
 });
 
 mqtt_client.on('connect', function (err) {
-    debugMqtt("Verbindung mit MQTT-Server hergestellt");
+    debug("Verbindung mit MQTT-Server hergestellt");
     connected = true;
     var topic = CONFIG.topic + '#';
     mqtt_client.subscribe(topic, {
@@ -52,15 +51,15 @@ mqtt_client.on('connect', function (err) {
 
 mqtt_client.on("reconnect", function (error) {
     if (connected) {
-        debugMqtt("Verbindung mit MQTT-Server wurde unterbrochen. Erneuter Verbindungsversuch!");
+        debug("Verbindung mit MQTT-Server wurde unterbrochen. Erneuter Verbindungsversuch!");
     } else {
-        debugMqtt("Verbindung mit MQTT-Server konnte nicht herrgestellt werden.");
+        debug("Verbindung mit MQTT-Server konnte nicht herrgestellt werden.");
     }
     connected = false;
 });
 
 mqtt_client.on("error", function (error) {
-    debugMqtt("Verbindung mit MQTT-Server konnte nicht herrgestellt werden.", error);
+    debug("Verbindung mit MQTT-Server konnte nicht herrgestellt werden.", error);
     connected = false;
 });
 
@@ -82,33 +81,49 @@ mqtt_client.on('message', function (topic, message) {
     try {
         var cMessage = convertMessage(message);
         var topic = topic.split("/");
+        var type = topic[1];
         var options = {
-            type: topic[1],
             id: topic[2],
             key: topic[3],
             ip: topic[4],
         };
         var exec = topic[5];
 
-        if (options.type == "socket" || options.type == "lightbulb") {
-            debug("device", options);
-            debug("message", cMessage);
-            var device = new TuyaDevice(options);
+        var commands = [
+            "command",
+            "color"
+        ]
 
-            if (exec == "command") {
-                var status = topic[6];
-                if (status == null) {
-                    device.switch(cMessage);
-                } else {
-                    device.switch(status);
-                }
-            }
-            if (exec == "color") {
-                var color = message.toString();
-                color = color.toLowerCase();
-                debugColor("topic: ", topic);
-                debugColor("onColor: ", color);
-                device.setColor(color);
+        if (type == "socket" || type == "lightbulb") {
+            if (commands.includes(exec)) {
+                var device = new TuyaDevice(options);
+                device.then(function (params) {
+                    // wait for connection to Device and run commands
+                    debug("receive message", cMessage);
+                    var device = params.device;
+
+                    if (exec == "command") {
+                        var status = topic[6];
+                        if (status == null) {
+                            device.switch(cMessage).then((data) => {
+                                debug("completed");
+                            });
+                        } else {
+                            device.switch(status).then((data) => {
+                                debug("completed");
+                            });
+                        }
+                    }
+                    if (exec == "color") {
+                        var color = message.toString();
+                        color = color.toLowerCase();
+                        debugColor("topic: ", topic);
+                        debugColor("onColor: ", color);
+                        device.setColor(color);
+                    }
+                }).catch((err) => {
+                    debugError(err);
+                });
             }
         }
     } catch (e) {
@@ -195,12 +210,14 @@ function publishDPS(device, dps) {
  */
 TuyaDevice.onAll('data', function (data) {
     try {
-        debugTuya('Data from device ' + this.type + ' :', data);
-        var status = data.dps['1'];
-        if (typeof status != "undefined") {
-            publishStatus(this, bmap(status));
+        if (typeof data.dps != "undefined") {
+            debugTuya('Data from device ' + this.type + ' :', data);
+            var status = data.dps['1'];
+            if (typeof status != "undefined") {
+                publishStatus(this, bmap(status));
+            }
+            publishDPS(this, data.dps);
         }
-        publishDPS(this, data.dps);
     } catch (e) {
         debugError(e);
     }
@@ -216,9 +233,9 @@ function MQTT_Tester() {
         if (mqtt_client.connected != connected) {
             connected = mqtt_client.connected;
             if (connected) {
-                debugMqtt('MQTT-Server verbunden.');
+                debug('MQTT-Server verbunden.');
             } else {
-                debugMqtt('MQTT-Server nicht verbunden.');
+                debug('MQTT-Server nicht verbunden.');
             }
         }
     }
