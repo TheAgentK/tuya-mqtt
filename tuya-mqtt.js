@@ -78,9 +78,16 @@ function convertMessage(message) {
     return status;
 }
 
+function convert_Message(message) {
+    var status2 = message.toString();
+    status2 = status2.toLowerCase();
+    return status2;
+}
+
 mqtt_client.on('message', function (topic, message) {
     try {
         var cMessage = convertMessage(message);
+        var dps_message = convert_Message(message);
         var topic = topic.split("/");
         var options = {
             type: topic[1],
@@ -92,7 +99,16 @@ mqtt_client.on('message', function (topic, message) {
 
         if (options.type == "socket" || options.type == "lightbulb") {
             debug("device", options);
-            debug("message", cMessage);
+            if(exec == "command") {
+                if(topic[6] == null) {
+                    debug("message", cMessage);
+                } else {
+                    debug("message", topic[6]);
+                }
+            } else {
+                if(exec == "dpsJ") debug("================ message", dps_message);
+            }
+
             var device = new TuyaDevice(options);
 
             if (exec == "command") {
@@ -103,14 +119,19 @@ mqtt_client.on('message', function (topic, message) {
                     device.switch(status);
                 }
             }
-            if (exec == "dps") {
-                var status = topic[6];
-                device.set(status);
-            }
+            // TheAgent uses the topic dps to return DPS values back to the user so if you use
+            // this as a topic you will create a loop, DO NOT USE dps as a topic
             if (exec == "dpsJ") {
-                var status = topic[6];
-                device.set(JSON.parse(status));
+                var status3 = topic[6];
+                if(status3 == null) {
+                    debug("========== dps_message:", dps_message);
+                    device.multiple_set(JSON.parse(dps_message));
+                } else {
+                    debug("=========== status3:", status3);
+                    device.multiple_set(JSON.parse(status3));
+                }
             }
+
             if (exec == "color") {
                 var color = message.toString();
                 color = color.toLowerCase();
@@ -118,7 +139,7 @@ mqtt_client.on('message', function (topic, message) {
                 debugColor("onColor: ", color);
                 device.setColor(color);
             }
-            
+
         }
     } catch (e) {
         debugError(e);

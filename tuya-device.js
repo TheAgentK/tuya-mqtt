@@ -116,12 +116,34 @@ var TuyaDevice = (function () {
 
     TuyaDevice.prototype.set = function (options, callback) {
         var device = this;
-        debug('Setting status:', options);
+        debug('From .set routine: Setting status:', options);
         return this.device.set(options).then(result => {
             device.get().then(status => {
-                debug('Result of setting status to', status);
+                debug('From .set routine: Result of setting status to', status);
                 if (callback != undefined) {
                     callback.call(device, status);
+                }
+                return;
+            });
+        });
+        resetTimer();
+    }
+
+    TuyaDevice.prototype.multiple_set = function (options, callback) {
+        var device = this;
+        let Multiple_state = options;
+        let stateObjM = {
+            multiple: true,
+            data: Multiple_state,
+        };
+        debug('From .multiple_set routine -------->Setting stateObjM:', JSON.stringify(stateObjM));
+        return this.device.set(stateObjM).then(result => {
+            device.get().then(status4 => {
+                debug('From .multiple_set routine ---------> Result of getting the dps values was ', result);
+                debugger;
+                debug('From .multiple_set routine ------------->Result of setting stateObjM to', JSON.stringify(stateObjM), ' was', status4);
+                if (callback != undefined) {
+                    callback.call(device, status4);
                 }
                 return;
             });
