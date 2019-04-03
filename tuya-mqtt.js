@@ -145,7 +145,7 @@ mqtt_client.on('message', function (topic, message) {
         debugError(e);
     }
 });
-
+//
 /**
  * Publish current TuyaDevice state to MQTT-Topic
  * @param {TuyaDevice} device

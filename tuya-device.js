@@ -149,7 +149,7 @@ var TuyaDevice = (function () {
         });
         resetTimer();
     }
-
+//
     TuyaDevice.prototype.switch = function (newStatus, callback) {
         newStatus = newStatus.toLowerCase();
         debug("switch: " + newStatus);
