@@ -124,10 +124,10 @@ mqtt_client.on('message', function (topic, message) {
             if (exec == "dpsJ") {
                 var status3 = topic[6];
                 if(status3 == null) {
-                    debug("========== dps_message:", dps_message);
+                    debug("dps_message:", dps_message);
                     device.multiple_set(JSON.parse(dps_message));
                 } else {
-                    debug("=========== status3:", status3);
+                    debug("status3:", status3);
                     device.multiple_set(JSON.parse(status3));
                 }
             }
