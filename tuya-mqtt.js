@@ -106,7 +106,7 @@ mqtt_client.on('message', function (topic, message) {
                     debug("message", topic[6]);
                 }
             } else {
-                if(exec == "dpsJ") debug("================ message", dps_message);
+                if(exec == "dpsJ") debug("message", dps_message);
             }
 
             var device = new TuyaDevice(options);

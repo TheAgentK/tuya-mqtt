@@ -136,12 +136,11 @@ var TuyaDevice = (function () {
             multiple: true,
             data: Multiple_state,
         };
-        debug('From .multiple_set routine -------->Setting stateObjM:', JSON.stringify(stateObjM));
+        debug('From .multiple_set routine : Setting stateObjM:', JSON.stringify(stateObjM));
         return this.device.set(stateObjM).then(result => {
             device.get().then(status4 => {
-                debug('From .multiple_set routine ---------> Result of getting the dps values was ', result);
-                debugger;
-                debug('From .multiple_set routine ------------->Result of setting stateObjM to', JSON.stringify(stateObjM), ' was', status4);
+                debug('From .multiple_set routine : Result of getting the dps values was ', result);
+                debug('From .multiple_set routine : Result of setting stateObjM to', JSON.stringify(stateObjM), ' was', status4);
                 if (callback != undefined) {
                     callback.call(device, status4);
                 }
