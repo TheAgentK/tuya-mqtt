@@ -157,8 +157,8 @@ domain1.run(function() {
                     this.toggle(callback);
                 }
                 // at this point we know the information after the command topic is a JSON string
-                if (newStatus.includes("multiple") || newStatus.includes("dps")) {
-                    debug(`newStatus contains ${newStatus}  \"multiple\" or \"dps\" key words`);
+                if (newStatus.includes("multiple") || newStatus.includes("dps") || newStatus.includes( "schema")) {
+                    debug(`newStatus contains ${newStatus}  \"multiple\" or \"dps\" or \"schema\" key words`);
                     let stateObjM = JSON.parse(newStatus);
                     debug('newStatus as a JSON object, contains:', JSON.stringify(stateObjM));
                     this.get().then(status => {

@@ -101,7 +101,36 @@ domain2.run(function() {
         status = status.toLowerCase();
         return status;
     }
-
+    // This is where you can send commands to the tuya device
+    // here are examples of commands you can use
+    // using the Command MQTT Topci: tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command
+    // one can place the following right after the command topic as follows:
+    // command/ON or command/OFF or command/on or command/off or command/1 or command/0 or
+    // command/{ "dps": 1, "set": true } or command/{ "dps": 1, "set": false } or
+    // command/{ "multiple": true, "data": { "1": false, "7": false} } or
+    // command/{ "schema": true } or
+    // command/{ "multiple": true, "data": { "1": true, "2": "scene_1" } } or
+    // command/{ "multiple": true, "data": { "1": true, "2": "colour", "5": "ffc400002effff" } } or
+    // command/{ "multiple": true, "data": { "1": true, "2": "white", "3": 27, "4": 255 } }
+    //
+    // one can also use the message part of the MQTT topic (on="" or off="") and
+    // leaving the commandTopic="tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command" (NO forward slash after command)
+    // instead use the on="" or off="" of the Generic MQTT thing or message="" of _pub or _sub  command lines
+    //  to set the light or plug ON set message to (on="" or off=""):
+    //  { "dps": 1, "set": true }, or ON or on or 1
+    // to set the light or plug OFF, set message to:
+    // { "dps": 1, "set": false }, OFF or off or 0
+    // to turn the main plug ON and the USB port on set message to:
+    // { "multiple": true, "data": { "1": false, "7": false} }
+    // to get a status update on the device set the message to:
+    // { "schema": true }
+    // to turn the lightbulb on and set the scene to scene 1 set message to:
+    // { "multiple": true, "data": { "1": true, "2": "scene_1" } }
+    // to turn the light bulb on and set the color to YELLOW set message to:
+    // { "multiple": true, "data": { "1": true, "2": "colour", "5": "ffc400002effff" } }
+    // to turn the lightbulb on and set the color to white with 1% brightness set the message to:
+    // { "multiple": true, "data": { "1": true, "2": "white", "3": 27, "4": 255 } }
+    //
     mqtt_client.on('message', function (topic, message) {
         try {
             var cMessage = convertMessage(message);
