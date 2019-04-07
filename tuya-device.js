@@ -167,7 +167,7 @@ domain1.run(function() {
                     resetTimer();
                 }
         }
-
+//
         TuyaDevice.prototype.switchOn = function (callback) {
             var device = this;
             debug("switch -> ON");

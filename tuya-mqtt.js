@@ -130,7 +130,6 @@ domain2.run(function() {
     // { "multiple": true, "data": { "1": true, "2": "colour", "5": "ffc400002effff" } }
     // to turn the lightbulb on and set the color to white with 1% brightness set the message to:
     // { "multiple": true, "data": { "1": true, "2": "white", "3": 27, "4": 255 } }
-    //
     mqtt_client.on('message', function (topic, message) {
         try {
             var cMessage = convertMessage(message);
