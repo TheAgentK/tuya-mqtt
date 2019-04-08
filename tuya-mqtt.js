@@ -66,66 +66,135 @@ mqtt_client.on("error", function (error) {
 /**
  * execute function on topic message
  */
-function boolToString(istate) {
-    return istate == 1 ? 'on' : "off";
+
+function IsJsonString(text) {
+    if (/^[\],:{}\s]*$/.test(text.replace(/\\["\\\/bfnrtu]/g, '@').replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
+        //the json is ok
+        return true;
+    }
+    return false;
 }
 
-function convertMessage(message) {
-    var status = message.toString();
-    status = boolToString(status);
-    status = status.toLowerCase();
-    return status;
+/**
+ * check mqtt-topic string for old notation with included device type
+ * @param {String} topic
+ */
+function checkTopicForOldNotation(_topic) {
+    var topic = _topic.split("/");
+    var type = topic[1];
+    return (type == "socket" || type == "lightbulb");
+}
+
+/**
+ * get action from mqtt-topic string
+ * @param {String} topic
+ * @returns {String} action type
+ */
+function getActionFromTopic(_topic) {
+    var topic = _topic.split("/");
+
+    if (checkTopicForOldNotation(_topic)) {
+        return topic[5];
+    } else {
+        return topic[4];
+    }
+}
+
+/**
+ * get device informations from mqtt-topic string
+ * @param {String} topic
+ * @returns {String} object.id
+ * @returns {String} object.key
+ * @returns {String} object.ip
+ */
+function getDeviceFromTopic(_topic) {
+    var topic = _topic.split("/");
+
+    if (checkTopicForOldNotation(_topic)) {
+        return {
+            id: topic[2],
+            key: topic[3],
+            ip: topic[4],
+            type: topic[1]
+        };
+    } else {
+        return {
+            id: topic[1],
+            key: topic[2],
+            ip: topic[3]
+        };
+    }
+}
+
+/**
+ * get command from mqtt - topic string
+ * converts simple commands to TuyAPI JSON commands
+ * @param {String} topic
+ * @returns {Object}
+ */
+function getCommandFromTopic(_topic, _message) {
+    var topic = _topic.split("/");
+    var command = null;
+
+    if (checkTopicForOldNotation(_topic)) {
+        command = topic[6];
+    } else {
+        command = topic[5];
+    }
+
+    if (command == null) {
+        command = _message;
+    }
+
+    if (command != "1" && command != "0" && IsJsonString(command)) {
+        debug("command is JSON");
+        command = JSON.parse(command);
+    } else {
+        // convert simple commands (on, off, 1, 0) to TuyAPI-Commands
+        var convertString = command.toLowerCase() == "on" || command == "1" || command == 1 ? true : false;
+        command = {
+            set: convertString
+        }
+    }
+
+    return command;
 }
 
 mqtt_client.on('message', function (topic, message) {
     try {
-        var cMessage = convertMessage(message);
-        var topic = topic.split("/");
-        var type = topic[1];
-        var options = {
-            id: topic[2],
-            key: topic[3],
-            ip: topic[4],
-        };
-        var exec = topic[5];
+        message = message.toString();
+        var action = getActionFromTopic(topic);
+        var options = getDeviceFromTopic(topic);
 
-        var commands = [
-            "command",
-            "color"
-        ]
+        debug("receive settings", JSON.stringify({
+            action: action,
+            message: message,
+            options: options
+        }));
 
-        if (type == "socket" || type == "lightbulb") {
-            if (commands.includes(exec)) {
-                var device = new TuyaDevice(options);
-                device.then(function (params) {
-                    // wait for connection to Device and run commands
-                    debug("receive message", cMessage);
-                    var device = params.device;
+        var device = new TuyaDevice(options);
+        device.then(function (params) {
+            var device = params.device;
 
-                    if (exec == "command") {
-                        var status = topic[6];
-                        if (status == null) {
-                            device.switch(cMessage).then((data) => {
-                                debug("completed");
-                            });
-                        } else {
-                            device.switch(status).then((data) => {
-                                debug("completed");
-                            });
-                        }
-                    }
-                    if (exec == "color") {
-                        var color = message.toString();
-                        color = color.toLowerCase();
-                        debugColor("topic: ", topic);
-                        debugColor("onColor: ", color);
-                        device.setColor(color);
-                    }
-                }).catch((err) => {
-                    debugError(err);
-                });
+            switch (action) {
+                case "command":
+                    var command = getCommandFromTopic(topic, message);
+                    debug("receive command", command);
+                    device.set(command).then((data) => {
+                        debug("set device status completed", data);
+                    });
+                    break;
+                case "color":
+                    device.type = "lightbulb";
+                    var color = message.toLowerCase();
+                    debugColor("set color: ", color);
+                    device.setColor(color);
+                    break;
             }
-        }
+
+        }).catch((err) => {
+            debugError(err);
+        });
     } catch (e) {
         debugError(e);
     }

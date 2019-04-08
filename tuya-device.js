@@ -17,7 +17,10 @@ const debugColor = require('debug')('TuyAPI:device:color');
 // Helpers
 const Parser = require('tuyapi/lib/message-parser');
 
-class CustomTujAPI extends TuyAPI {
+/**
+ * Extends default TuyAPI-Class to add some more error handlers
+ */
+class CustomTuyAPI extends TuyAPI {
     get(options) {
         // Set empty object as default
         options = options ? options : {};
@@ -122,7 +125,7 @@ var TuyaDevice = (function () {
         this.options = options;
 
         Object.defineProperty(this, 'device', {
-            value: new CustomTujAPI(JSON.parse(JSON.stringify(this.options)))
+            value: new CustomTuyAPI(JSON.parse(JSON.stringify(this.options)))
         });
 
         this.device.on('data', data => {
