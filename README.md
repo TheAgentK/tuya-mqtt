@@ -39,8 +39,12 @@ node tuya-mqtt.js
 // For debugging purpose, to use DEBUG you must first install the debug from npm
 // to install debug use this command at the command prompt: npm install debug
 // here is the url to help install debug : https://www.npmjs.com/package/debug
-// after you have installed debug then on Linux machines at the bash command prompt:
+// after you have installed debug,
+
+//on Linux machines at the bash command prompt:
 DEBUG=* tuya-mqtt.js
+
+
 // on Windows machines at the cmd.exe command prompt:
 Set DEBUG=* tuya-mqtt.js
 ```
