@@ -12,9 +12,15 @@ https://community.openhab.org/t/step-by-step-guide-for-adding-tuya-bulbs-smart-l
 Download this project to your openhab2-script-folder "/etc/openhab2/scripts" and install tuyapi from the same folder that the tuya-mqtt.js is in
 ```
 cd /etc/openhab2/scripts
-git clone git@github.com:TheAgentK/tuyaapi_mqtt.git // this project
+
+// clone this project
+git clone git@github.com:TheAgentK/tuyaapi_mqtt.git
+
+// change directory to the project directory
 cd tuyaapi_mqtt
-npm install //downloads codetheweb/tuyapi
+
+//installs this project along with codetheweb/tuyapi project
+npm install 
 ```
 
 This involves MIM of the connection. Instructions can be found here: https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md
@@ -22,16 +28,27 @@ This involves MIM of the connection. Instructions can be found here: https://git
 Create your configuration file:
 ```
 cp config.json.sample config.json
-nano config.json // edit the configuration file
+// edit the configuration file
+nano config.json 
 ```
 
 Start command
 ```
 node tuya-mqtt.js
 
-// For debugging purpose
+// For debugging purpose, to use DEBUG you must first install the debug from npm
+// to install debug use this command at the command prompt: npm install debug
+// here is the url to help install debug : https://www.npmjs.com/package/debug
+// after you have installed debug,
+
+//on Linux machines at the bash command prompt:
 DEBUG=* tuya-mqtt.js
+
+
+// on Windows machines at the cmd.exe command prompt:
+Set DEBUG=* tuya-mqtt.js
 ```
+URL to [DEBUG](https://www.npmjs.com/package/debug) 
 
 MQTT Topic
 ```
@@ -44,20 +61,50 @@ Change device state (by topic):
     Example:
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/on
     tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/off
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/ON
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/OFF
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/1
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/0
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/toggle
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/TOGGLE
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/{ "dps": 1, "set": true }
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/{ "multiple": true, "data": { "1": true, "7": true } }
+ 
 
 Change device state (by payload)
-Use with OpenHAB 2.X MQTT bindings or others where only a single command topic is preferred
-    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command // State as Payload (on,off)	
+Use with OpenHAB 2.X MQTT bindings or others where only a single command topic is preferred:
+NOTE: notice that nothing follows the word command, DO NOT but a "/" in after command.
+
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command 
+    
+    in the Generic MQTT Thing where on="" and off="" is declared place the following in on=" " or off=" " section:
+    "ON"
+    "OFF"
+    "on"
+    "off"
+    "1"
+    "0"
+    "toggle"
+    "TOGGLE"
+    "{ \"dps\": 1, \"set\": true }"
+    "{ \"multiple\": true, \"data\": { \"1\": true, \"7\": true } }"
+    
 	
 Color for lightbulb:
 
     Example:
-    tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/color // Color as Payload as hexColor
+    // Color as Payload as hexColor
+    tuya/lightbulb/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/color 
 
 Read data from device:
-    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/dps // returns JSON.stringify(dps) values, use with care, does not always contain all dps values
+    // returns JSON.stringify(dps) values, use this to force communications with each tuya device.  I recommand sending
+    // this command twice in a row when your system restarts.
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/{ "schema": true }
+    
+    // returns the status for the specified dps index and sets the STATE topic to its status
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command/{ "dps": 7 }
 
-    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/dps/<tuya-dps-id> // return single dps data value
+    if { "schema": true } is sent the STATE topic will be equal to the status of dps 1.
 ```
 
 #### Issues
@@ -133,7 +180,7 @@ Bridge mqtt:broker:myUnsecureBroker [ host="192.168.0.42", secure=false ]
 {
     Thing mqtt:topic:mything {
     Channels:
-        Type switch : tuya_kitchen_coffeemachine_mqtt "Steckdose Kaffeemaschine" [ stateTopic="tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state", commandTopic="tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command" ]
+        Type switch : tuya_kitchen_coffeemachine_mqtt "Kitchen Coffee Machine MQTT Channel" [ stateTopic="tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state", commandTopic="tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command", on="{ \"dps": 1, \"set\": true }, off="0" ]
     }
 }
 ```
