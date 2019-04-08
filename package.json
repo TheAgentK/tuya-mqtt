@@ -1,12 +1,16 @@
 {
-  "name": "tuya-api",
-  "version": "1.0.0",
+  "name": "tuya-mqtt",
+  "version": "2.0.1",
   "description": "",
-  "main": "tuya.js",
+  "homepage": "https://github.com/TheAgentK/tuya-mqtt#readme",
+  "main": "tuya-mqtt.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": {
+    "name": "TheAgentK",
+    "email": "lulatsch22@googlemail.com"
+  },
   "license": "ISC",
   "dependencies": {
     "color-convert": "^1.9.3",
