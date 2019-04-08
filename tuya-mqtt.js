@@ -10,7 +10,7 @@ var domain2 = domain.create();
 // catch the uncaught errors that weren't wrapped in a domain or try catch statement
 // do not use this in modules, but only in applications, as otherwise we could have multiple of these bound
 process.on('uncaughtException', err2 => {
-    debug(" The uncaughtException Listener caught the Error, the Error Message is ("+err2.message+").");
+    debugMqtt(" The uncaughtException Listener caught the Error, the Error Message is ("+err2.message+").");
 });
 // if you can't get rid of the error or figure out why it only occurs on initial startup then you should handle
 // it so it does not show up in the event log in openhab2.  I also noticed that the error occurs when switching to
@@ -19,7 +19,7 @@ process.on('uncaughtException', err2 => {
 // openhab2 they should try to do two state topics to each device twice so that when they want to contorl the deice
 // commands will go through.
 process.on('unhandledRejection', err3 => {
-    debug("========**********unhandledRejection listener caught the Error, the Error Message is: ", err3.message);
+    debugMqtt("unhandledRejection listener caught the Error, the Error Message is: ", err3.message);
 });
 
 // Sometimes though, there may still be code that throws an error somewhere which
@@ -28,7 +28,7 @@ process.on('unhandledRejection', err3 => {
 // that section in a node.js domain
 domain2.on('error', function(err){
     // handle the error safely
-    debug("Domain2 handled this error, error line number: the Error message is ("+err.message+").");
+    debugMqtt("Domain2 handled this error, error line number: the Error message is ("+err.message+").");
 });
 domain2.run(function() {
 
@@ -112,6 +112,7 @@ domain2.run(function() {
     // command/{ "multiple": true, "data": { "1": true, "2": "scene_1" } } or
     // command/{ "multiple": true, "data": { "1": true, "2": "colour", "5": "ffc400002effff" } } or
     // command/{ "multiple": true, "data": { "1": true, "2": "white", "3": 27, "4": 255 } }
+    // command/{ "dps": 7}
     //
     // one can also use the message part of the MQTT topic (on="" or off="") and
     // leaving the commandTopic="tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/command" (NO forward slash after command)
@@ -124,6 +125,8 @@ domain2.run(function() {
     // { "multiple": true, "data": { "1": false, "7": false} }
     // to get a status update on the device set the message to:
     // { "schema": true }
+    // to get the value of one specific dps value displayed as the STATE Topic set message to :
+    // { "dps": dpsIndex }
     // to turn the lightbulb on and set the scene to scene 1 set message to:
     // { "multiple": true, "data": { "1": true, "2": "scene_1" } }
     // to turn the light bulb on and set the color to YELLOW set message to:
@@ -141,38 +144,78 @@ domain2.run(function() {
                 ip: topic[4],
             };
             var exec = topic[5];
-
             if (options.type == "socket" || options.type == "lightbulb") {
-                debug("device, options", options);
+                debug("device, options : ", options);
                 if (exec == "command") {
                     if (topic[6] == null) {
                         if (message.toString().includes("{") ||
                             message.toString().toLowerCase().includes("on") ||
-                            message.toString().toLowerCase().includes("off")) cMessage = message.toString();
-                        debug("message", cMessage);
+                            message.toString().toLowerCase().includes("off") ||
+                            message.toString().toLowerCase().includes( "toggle") ) cMessage = message.toString();
+                        debug("message, topic[6] is null", cMessage);
                     } else {
                         if (!(topic[6].includes("{") || topic[6].toLowerCase().includes("on") ||
-                            topic[6].toLowerCase().includes("off"))) {
+                            topic[6].toLowerCase().includes("off") || topic[6].toLowerCase().includes( "toggle") ) ) {
                             topic[6] = (topic[6] == 1) ? "on" : "off";
                         }
-                        debug("message", topic[6].toString());
+                        debug("message, topic[6] is the message: ", topic[6].toString());
                     }
                 }
 
-                var device = new TuyaDevice(options);
-                debug("device: ", device);
+               var device = new TuyaDevice(options);
+                // initialize the dpsFlag, dspIndex and dspStatus
+                device.dpsFlag = false;
+                device.dpsIndex = 1;
+                device.dpsStatus = "INIT";
 
                 if (exec == "command") {
                     var status = topic[6];
                     if (status == null) {
                         if (message.toString().includes("{") ||
                             message.toString().toLowerCase().includes("on") ||
-                            message.toString().toLowerCase().includes("off")) cMessage = message.toString();
+                            message.toString().toLowerCase().includes("off") ||
+                            message.toString().toLowerCase().includes( "toggle") ) {
+                            cMessage = message.toString().toLowerCase();
+                            // gets rid of extra weird characters from the message
+                            if(cMessage.includes( "toggle")) cMessage = "toggle";
+                            if(cMessage.includes( "on")) cMessage = "on";
+                            if(cMessage.includes( "off")) cMessage = "off";
+                            if(cMessage.includes( "{")) {
+                                if(cMessage.includes( "dps") && !cMessage.includes( "set")) {
+                                    // the users wants the status of one specific dps value, they are using
+                                    // { "dps": index } JSON string. When this is done we override the default of'
+                                    // displaying the status of dps:1 as the STATE topic with the status of the
+                                    // requested dps index.
+                                    //
+                                    // if they using { "dps": index, "set": boolean} or
+                                    // { "multiple": true, "data": { "1": boolean, "2": value } } then
+                                    // we display the status of dps 1 as the STATE topic
+                                    device.dpsFlag = true;
+                                    device.dpsIndex = JSON.parse(cMessage).dps;
+                                    device.dpsStatus = "PROCESSING";
+                                }
+                            }
+                        }
                         device.switch(cMessage);
                     } else {
                         if (!(status.includes("{") || status.toLowerCase().includes("on") ||
-                            status.toLowerCase().includes("off"))) {
+                            status.toLowerCase().includes("off") || status.toLowerCase().includes( "toggle")) ) {
                             status = (status == 1) ? "on" : "off";
+                        }
+                        if(status.includes( "{")) {
+                            if(status.includes( "dps") && !status.includes( "set")) {
+                                // the users wants the status of one specific dps value, they are using
+                                // { "dps": index } JSON string. When this is done we override the default of'
+                                // displaying the status of dps:1 as the STATE topic with the status of the
+                                // requested dps index.
+                                //
+                                // if they using { "dps": index, "set": boolean} or
+                                // { "multiple": true, "data": { "1": boolean, "2": value } } then
+                                // we display the status of dps 1 as the STATE topic
+                                device.dpsFlag = true;
+                                device.dpsIndex = JSON.parse(status).dps;
+                                device.dpsStatus = "PROCESSING";
+                            }
                         }
                         device.switch(status);
                     }
@@ -184,7 +227,6 @@ domain2.run(function() {
                     debugColor("onColor: ", color);
                     device.setColor(color);
                 }
-
             }
         } catch (e) {
             debug("Error occurred while in mqtt_client.on message event", e);
@@ -273,8 +315,19 @@ domain2.run(function() {
     TuyaDevice.onAll('data', function (data) {
         try {
             debugTuya('Data from device ' + this.type + ' :', data);
+            // this will always publish the current status of dps 1 as STATE topic
             var status = data.dps['1'];
+            if(this.dpsFlag) {
+                status = data.dps[this.dpsIndex.toString()];
+                this.dpsStatus = status;
+                debugTuya(`dpsIndex of: ${this.dpsIndex} has a dpsStatus of: ${this.dpsStatus} in which dpsFlag: ${this.dpsFlag.toString()}`);
+            }
             if (typeof status != "undefined") {
+                // if the user sends a GET ({"dps": 7}) this will
+                // now reflect the value of that specific dps value on the STATE topic,
+                // otherwise if a specific dps get is not specified it will make STATE topic
+                // reflect dps: 1 status.
+                // display the defined status as ON or OFF
                 publishStatus(this, bmap(status));
             }
             publishDPS(this, data.dps);

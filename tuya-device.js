@@ -1,6 +1,8 @@
 const TuyAPI = require('tuyapi');
 const TuyColor = require('./tuya-color');
 const debug = require('debug')('TuyAPI-device');
+const debugGET = require('debug')('TuyaAPI:Methods');
+const debugSwitch = require('debug')('TuyaAPI:Switch');
 const debugColor = require('debug')('TuyAPI-device-color');
 const debugTimer = require('debug')('TuyAPI-device-timer');
 var domain = require('domain');
@@ -27,7 +29,6 @@ domain1.run(function() {
     var TuyaDevice = (function () {
         var devices = [];
         var events = {};
-
         var autoTimeout = undefined;
 
         function checkExisiting(id) {
@@ -44,7 +45,6 @@ domain1.run(function() {
         }
 
         function resetTimer() {
-            debug("In resetTimer");
             return;
             debugTimer("Reset timer for auto disconnect all devices");
             clearTimeout(autoTimeout);
@@ -79,6 +79,36 @@ domain1.run(function() {
                 value: new TuyAPI(this.options)
             });
 
+            Object.defineProperty(this, 'dpsIndex', {
+                set: function (vDpsIndex) {
+                    this._dpsIndex = vDpsIndex;
+                    debugGET(`dpsIndex is now: ${this._dpsIndex}`);
+                },
+                get: function () {
+                    return this._dpsIndex;
+                }
+            });
+
+            Object.defineProperty(this, 'dpsFlag', {
+                set: function (vDpsFlag) {
+                    this._dpsFlag = vDpsFlag;
+                    debugGET(`dpsFlag is now: ${this._dpsFlag.toString()}`);
+                },
+                get: function () {
+                    return this._dpsFlag;
+                }
+            });
+
+            Object.defineProperty(this, 'dpsStatus', {
+                set: function (vDpsStatus) {
+                    this._dpsStatus = vDpsStatus;
+                    debugGET(`dpsStatus is now: ${this._dpsStatus}`);
+                },
+                get: function () {
+                    return this._dpsStatus;
+                }
+            });
+
             this.device.on('connected', () => {
                 debug('Connected to device.');
                 device.triggerAll('connected');
@@ -95,7 +125,6 @@ domain1.run(function() {
             });
 
             this.device.on('error', (err) => {
-                device_error = true;
                 debug('Error: ' + err);
                 device.triggerAll('error', err);
             });
@@ -143,34 +172,45 @@ domain1.run(function() {
                 resetTimer();
         }
 
-//
         TuyaDevice.prototype.switch = function (newStatus, callback) {
             newStatus = newStatus.toLowerCase();
-                debug("switch: " + newStatus);
-                if (newStatus == "on") {
-                    this.switchOn(callback);
-                }
-                if (newStatus == "off") {
-                    this.switchOff(callback);
-                }
-                if (newStatus == "toggle") {
-                    this.toggle(callback);
-                }
-                // at this point we know the information after the command topic is a JSON string
-                if (newStatus.includes("multiple") || newStatus.includes("dps") || newStatus.includes( "schema")) {
-                    debug(`newStatus contains ${newStatus}  \"multiple\" or \"dps\" or \"schema\" key words`);
-                    let stateObjM = JSON.parse(newStatus);
-                    debug('newStatus as a JSON object, contains:', JSON.stringify(stateObjM));
-                    this.get().then(status => {
-                        this.set(stateObjM, callback);
+            debugSwitch("switch: " + newStatus);
+            if (newStatus == "on") {
+                this.switchOn(callback);
+            }
+            if (newStatus == "off") {
+                this.switchOff(callback);
+            }
+            if (newStatus == "toggle") {
+                this.switch_toggle(callback);
+            }
+            // at this point we know the information after the command topic is a JSON string
+            if (newStatus.includes("multiple") || (newStatus.includes("dps") && newStatus.includes( "set")) ) {
+                debugSwitch(`newStatus contains ${newStatus}  \"multiple\" or (\"dps\" and \"set\") key words`);
+                let stateObjM = JSON.parse(newStatus);
+                debugSwitch('newStatus as a JSON object for SET method, contains:', JSON.stringify(stateObjM));
+                this.get().then(status => {
+                    this.set(stateObjM, callback);
+                });
+                resetTimer();
+            } else {
+                // do get only!! want info from the device
+                if(newStatus.includes( "schema") || (newStatus.includes( "dps") && !newStatus.includes( "set")) ) {
+                    let stateObjG = JSON.parse(newStatus);
+                    debugSwitch(`newStatus as a JSON object for GET method, contains: ${JSON.stringify(stateObjG)}`);
+                    this.get(stateObjG).then( status => {
+                        if(newStatus.includes( "schema")) debugSwitch(`dps Get, returned a value of ${JSON.stringify(status)}`);
+                        if(newStatus.includes( "dps") && !newStatus.includes( "set")) {
+                            debugSwitch(`dps Get, returned a value of ${status}`);
+                        }
                     });
-                    resetTimer();
                 }
+            }
         }
-//
+
         TuyaDevice.prototype.switchOn = function (callback) {
             var device = this;
-            debug("switch -> ON");
+            debugSwitch("switch -> ON");
                 device.get().then(status => {
                     device.set({
                         set: true
@@ -180,7 +220,7 @@ domain1.run(function() {
 
         TuyaDevice.prototype.switchOff = function (callback) {
             var device = this;
-                debug("switch -> OFF");
+            debugSwitch("switch -> OFF");
                 device.get().then(status => {
                     device.set({
                         set: false
@@ -188,9 +228,10 @@ domain1.run(function() {
                 });
         }
 
-        TuyaDevice.prototype.toggle = function (callback) {
+        TuyaDevice.prototype.switch_toggle = function (callback) {
             var device = this;
                 device.get().then(status => {
+                    debugSwitch(`toggle from ${status} --> ${!status}`);
                     device.set({
                         set: !status
                     }, callback);
@@ -252,5 +293,4 @@ domain1.run(function() {
     }());
 
     module.exports = TuyaDevice;
-
 });
