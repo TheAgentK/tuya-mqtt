@@ -82,7 +82,8 @@ function IsJsonString(text) {
 function checkTopicForOldNotation(_topic) {
     var topic = _topic.split("/");
     var type = topic[1];
-    return (type == "socket" || type == "lightbulb");
+    var result = (type == "socket" || type == "lightbulb");
+    return result;
 }
 
 /**
@@ -185,10 +186,11 @@ mqtt_client.on('message', function (topic, message) {
                     });
                     break;
                 case "color":
-                    device.type = "lightbulb";
                     var color = message.toLowerCase();
                     debugColor("set color: ", color);
-                    device.setColor(color);
+                    device.setColor(color).then((data) => {
+                        debug("set device color completed", data);
+                    });
                     break;
             }
 
@@ -214,7 +216,12 @@ function publishStatus(device, status) {
             var tuyaIP = device.options.ip;
 
             if (typeof tuyaID != "undefined" && typeof tuyaKey != "undefined" && typeof tuyaIP != "undefined") {
-                var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/state";
+                var topic = CONFIG.topic;
+                if (typeof type != "undefined") {
+                    topic += type + "/";
+                }
+                topic += tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/state";
+
                 mqtt_client.publish(topic, status, {
                     retain: CONFIG.retain,
                     qos: CONFIG.qos
@@ -247,7 +254,13 @@ function publishDPS(device, dps) {
             var tuyaIP = device.options.ip;
 
             if (typeof tuyaID != "undefined" && typeof tuyaKey != "undefined" && typeof tuyaIP != "undefined") {
-                var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/dps";
+                var baseTopic = CONFIG.topic;
+                if (typeof type != "undefined") {
+                    baseTopic += type + "/";
+                }
+                baseTopic += tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/dps";
+
+                var topic = baseTopic;
                 var data = JSON.stringify(dps);
                 debugTuya("mqtt dps updated to:" + topic + " -> ", data);
                 mqtt_client.publish(topic, data, {
@@ -256,7 +269,7 @@ function publishDPS(device, dps) {
                 });
 
                 Object.keys(dps).forEach(function (key) {
-                    var topic = CONFIG.topic + type + "/" + tuyaID + "/" + tuyaKey + "/" + tuyaIP + "/dps/" + key;
+                    var topic = baseTopic + "/" + key;
                     var data = JSON.stringify(dps[key]);
                     debugTuya("mqtt dps updated to:" + topic + " -> dps[" + key + "]", data);
                     mqtt_client.publish(topic, data, {

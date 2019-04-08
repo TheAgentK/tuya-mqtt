@@ -119,7 +119,7 @@ var TuyaDevice = (function () {
             return new TuyaDevice(options);
         }
 
-        options.type = options.type || "socket";
+        options.type = options.type || undefined;
 
         this.type = options.type;
         this.options = options;
