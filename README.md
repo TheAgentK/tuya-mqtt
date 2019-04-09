@@ -184,10 +184,19 @@ Bridge mqtt:broker:myUnsecureBroker [ host="192.168.0.42", secure=false ]
     }
 }
 ```
-For a light with color you would need a separate channel with the command topic set to
-tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/color and link that to your 
-color item.
+	
+For a light with color you would need a separate MQTT channel with the state and command topic set as follows:
 
+MQTT Topic
+```
+Current device state:
+    tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/state
+    
+Current device command:
+tuya/<tuyaAPI-type>/<tuyaAPI-id>/<tuyaAPI-key>/<tuyaAPI-ip>/color 
+	and link that to your color item to this topic
+```
+	
 #### Basic UI sitemap
 ```
 Switch item=tuya_kitchen_coffeemachine_mqtt mappings=[ON="On", OFF="Off"]
