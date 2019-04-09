@@ -168,6 +168,7 @@ mqtt_client.on('message', function (topic, message) {
         var options = getDeviceFromTopic(topic);
 
         debug("receive settings", JSON.stringify({
+            topic: topic,
             action: action,
             message: message,
             options: options
