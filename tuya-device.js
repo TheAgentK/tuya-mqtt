@@ -255,9 +255,13 @@ var TuyaDevice = (function () {
 
     TuyaDevice.prototype.toggle = function () {
         if (!this.connected) return;
-        debug("toogle state");
-        return this.set({
-            set: !status
+        return new Promise((resolve, reject) => {
+            this.get().then((status) => {
+                debug("toogle state", status);
+                this.set({
+                    set: !status
+                });
+            });
         });
     }
 

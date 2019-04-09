@@ -151,10 +151,14 @@ function getCommandFromTopic(_topic, _message) {
         debug("command is JSON");
         command = JSON.parse(command);
     } else {
-        // convert simple commands (on, off, 1, 0) to TuyAPI-Commands
-        var convertString = command.toLowerCase() == "on" || command == "1" || command == 1 ? true : false;
-        command = {
-            set: convertString
+        if (command.toLowerCase() != "toggle") {
+            // convert simple commands (on, off, 1, 0) to TuyAPI-Commands
+            var convertString = command.toLowerCase() == "on" || command == "1" || command == 1 ? true : false;
+            command = {
+                set: convertString
+            }
+        } else {
+            command = command.toLowerCase();
         }
     }
 
@@ -182,9 +186,15 @@ mqtt_client.on('message', function (topic, message) {
                 case "command":
                     var command = getCommandFromTopic(topic, message);
                     debug("receive command", command);
-                    device.set(command).then((data) => {
-                        debug("set device status completed", data);
-                    });
+                    if (command == "toggle") {
+                        device.switch(command).then((data) => {
+                            debug("set device status completed", data);
+                        });
+                    } else {
+                        device.set(command).then((data) => {
+                            debug("set device status completed", data);
+                        });
+                    }
                     break;
                 case "color":
                     var color = message.toLowerCase();
