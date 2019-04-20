@@ -181,20 +181,26 @@ TuyaColorLight.prototype.setHSL = function (hue, saturation, brightness) {
     this.setHue(hue);
 }
 
+TuyaColorLight.prototype._stripBraces = function (string) {
+    return string.slice(1,-1);
+}
 /**
  * Set color from given string
  * @param  {String} colorValue could be HEX or HSL color type
  * @returns {Object} dps settings for given color
  */
 TuyaColorLight.prototype.setColor = function (colorValue) {
-    debug("Recieved color", colorValue);
+    var colorValue2;
 
-    if (this._ValIsHex(colorValue)) {
+    debug("Received color", colorValue);
+    colorValue2 = this._stripBraces(colorValue);
+    debug("colorValue2 = "+colorValue2);
+    if (this._ValIsHex(colorValue2)) {
         debug("Color is Hex");
-        var color = convert.hex.hsl(colorValue);
+        color = convert.hex.hsl(colorValue2);
     } else {
         debug("Color is HSL");
-        var color = colorValue.split(",");
+        var color = colorValue2.split(",");
         // convert strings to numbers
         color.forEach(function (element, key) {
             color[key] = parseInt(element, 10);
