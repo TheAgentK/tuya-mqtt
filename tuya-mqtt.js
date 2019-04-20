@@ -190,6 +190,22 @@ mqtt_client.on('message', function (topic, message) {
                         device.switch(command).then((data) => {
                             debug("set device status completed", data);
                         });
+                    }
+                    if (command.schema === true) {
+                        // this command is very useful. IT IS A COMMAND. It's place under the command topic.
+                        // It's the ONLY command that does not use device.set to get a result.
+                        // You have to use device.get and send the get method an exact JSON string of { schema: true }
+                        // This schema command does NOT
+                        // change the state of the device, all it does is query the device
+                        // as a confirmation that all communications are working properly.
+                        // Otherwise you have to physically change the state of the device just to
+                        // find out if you can talk to it.  If this command returns no errors than
+                        // we know we are have an established communication channel.  This is a native TuyAPI call that
+                        // the TuyAPI interface defines (its only available via the GET command.
+                        // this call returns a object of results
+                        device.schema(command).then((data) => {
+                        });
+                        debug("get (schema) device status completed");
                     } else {
                         device.set(command).then((data) => {
                             debug("set device status completed", data);
