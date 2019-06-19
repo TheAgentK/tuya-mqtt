@@ -65,7 +65,8 @@ URL to [DEBUG](https://www.npmjs.com/package/debug)
 
 ### MQTT Topic's (send data)
 
-**IMPORTANT NOTE**
+**-----IMPORTANT NOTE-----**
+
 **It's possible to replace the device IP address \<tuyAPI-ip\> with the word "discover" to have the API attempt to automatically discover the device IP address.  This capability allows support for 3.3 protocol devices without additional configuraiton but does require the system running this script to be on the same IP subnet as the Tuya device because discover relies on UDP broadcast from the devices.**
 
 ```
