@@ -177,7 +177,9 @@ mqtt_client.on('message', function (topic, message) {
             message: message,
             options: options
         }));
-
+        if (options.ip == "discover") {
+            delete options.ip
+        }
         var device = new TuyaDevice(options);
         device.then(function (params) {
             var device = params.device;
@@ -226,7 +228,11 @@ function publishStatus(device, status) {
             var tuyaKey = device.options.key;
             var tuyaIP = device.options.ip;
 
-            if (typeof tuyaID != "undefined" && typeof tuyaKey != "undefined" && typeof tuyaIP != "undefined") {
+            if (typeof tuyaIP == "undefined") {
+                tuyaIP = "discover"
+            }
+
+            if (typeof tuyaID != "undefined" && typeof tuyaKey != "undefined") {
                 var topic = CONFIG.topic;
                 if (typeof type != "undefined") {
                     topic += type + "/";
@@ -264,7 +270,11 @@ function publishDPS(device, dps) {
             var tuyaKey = device.options.key;
             var tuyaIP = device.options.ip;
 
-            if (typeof tuyaID != "undefined" && typeof tuyaKey != "undefined" && typeof tuyaIP != "undefined") {
+            if (typeof tuyaIP == "undefined") {
+                tuyaIP = "discover"
+            }
+
+            if (typeof tuyaID != "undefined" && typeof tuyaKey != "undefined") {
                 var baseTopic = CONFIG.topic;
                 if (typeof type != "undefined") {
                     baseTopic += type + "/";

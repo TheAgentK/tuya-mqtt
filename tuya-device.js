@@ -15,7 +15,8 @@ const debugColor = require('debug')('TuyAPI:device:color');
  */
 
 // Helpers
-const Parser = require('tuyapi/lib/message-parser');
+const MessageParser = require('tuyapi/lib/message-parser').MessageParser;
+const Parser = new MessageParser()
 
 /**
  * Extends default TuyAPI-Class to add some more error handlers

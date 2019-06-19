@@ -16,7 +16,7 @@
     "color-convert": "^1.9.3",
     "debug": "^3.2.6",
     "mqtt": "^2.18.8",
-    "tuyapi": "^4.0.4"
+    "tuyapi": "^5.1.1"
   },
   "repository": {
     "type": "git",
