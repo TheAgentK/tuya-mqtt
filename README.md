@@ -7,6 +7,16 @@ This project provides an MQTT client for communication with the home automation 
 :exclamation: There is a greate Step-By-Step guide from user HolgiHab at openhab community ([Step-By-Step Guide](
 https://community.openhab.org/t/step-by-step-guide-for-adding-tuya-bulbs-smart-life-to-oh2-using-tuya-mqtt-js-by-agentk/59371)). This guide is not only for light bulbs, but also applies to sockets. :exclamation:
 
+:exclamation: This branch of tuya-mqtt provides initial support for Tuya devices using firmware that implements the 3.3 tuya protocol (fully encrypted communications).  Because tuyapi requires specifying the protocol version when using the device IP, this required modifications to the script to either support specifying a version, or use the tuyapi auto discovery function which finds devices via UDP and allows it to auto-detect the protocol.
+
+To support this you can now replace the IP address in the topic with the word "discover" and the script will find the IP of the devices and automatically detect to correct protocol version.  This has the added advantage that, if the IP of the device changes, no changes are required to the topic.  To use automatic IP discovery the format of the topics are as follows:
+
+```
+    tuya/<tuyAPI-id>/<tuyAPI-key>/discover/state
+    tuya/<tuyAPI-id>/<tuyAPI-key>/discover/command
+```
+:exclamation:
+
 ## Instructions:
 
 Download this project to your openhab2-script-folder "/etc/openhab2/scripts" and install tuyapi from the same folder that the tuya-mqtt.js is in
@@ -54,6 +64,9 @@ URL to [DEBUG](https://www.npmjs.com/package/debug)
 
 
 ### MQTT Topic's (send data)
+
+*NOTE* that you can replace <tuyAPI-ip> with "discover" to have the API attempt to automatically discover the IP address.  This capability allows support for 3.3 protocol devices without additional configuraiton but does require the system running this script to be on the same IP subnet as the Tuya device because discover relies on UDP broadcast from the devices.
+
 ```
 Change device state (by topic):
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/<STATE>
