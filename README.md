@@ -7,9 +7,9 @@ This project provides an MQTT client for communication with the home automation 
 :exclamation: There is a greate Step-By-Step guide from user HolgiHab at openhab community ([Step-By-Step Guide](
 https://community.openhab.org/t/step-by-step-guide-for-adding-tuya-bulbs-smart-life-to-oh2-using-tuya-mqtt-js-by-agentk/59371)). This guide is not only for light bulbs, but also applies to sockets. :exclamation:
 
-:exclamation: This branch of tuya-mqtt provides initial support for Tuya devices using firmware that implements the 3.3 tuya protocol (fully encrypted communications).  Because tuyapi requires specifying the protocol version when using the device IP, this required modifications to the script to either support specifying a version, or use the tuyapi auto discovery function which finds devices via UDP and allows it to auto-detect the protocol.
+:exclamation: This branch of tuya-mqtt provides initial support for Tuya devices using firmware that implements the 3.3 tuya protocol (fully encrypted communications).  Because tuyapi requires specifying the protocol version when the device IP is specified directly, this required modifications to the script to either support setting the protocol version, or use the tuyapi auto discovery function.  This code attempts to implement the minimum changes required to provide support for this protcol via a simple implementation of automatic device discovery.
 
-To support this you can now replace the IP address in the topic with the word "discover" and the script will find the IP of the devices and automatically detect to correct protocol version.  This has the added advantage that, if the IP of the device changes, no changes are required to the topic.  To use automatic IP discovery the format of the topics are as follows:
+To support this it is now possible replace the IP address in the topic (tuyAPI-key) with the word "discover" which will trigger the script to use the automatic device discovery capability.  This has the added advantage that, if the IP of the device changes, no changes are required to the topic.  To use automatic IP discovery the format of the topics are as follows:
 
 ```
     tuya/<tuyAPI-id>/<tuyAPI-key>/discover/state
