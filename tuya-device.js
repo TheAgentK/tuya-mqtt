@@ -10,71 +10,9 @@ const debugColor = require('debug')('TuyAPI:device:color');
         id: '03200240600194781244',
         key: 'b8bdebab418f5b55',
         ip: '192.168.178.45',
-        type: "socket"
+        type: "ver33" 
     });
  */
-
-// Helpers
-const MessageParser = require('tuyapi/lib/message-parser').MessageParser;
-const Parser = new MessageParser()
-
-/**
- * Extends default TuyAPI-Class to add some more error handlers
- */
-class CustomTuyAPI extends TuyAPI {
-    get(options) {
-        // Set empty object as default
-        options = options ? options : {};
-
-        const payload = {
-            gwId: this.device.gwID,
-            devId: this.device.id
-        };
-
-        debug('GET Payload:');
-        debug(payload);
-
-        // Create byte buffer
-        const buffer = Parser.encode({
-            data: payload,
-            commandByte: 10 // 0x0a
-        });
-
-        // Send request and parse response
-        return new Promise((resolve, reject) => {
-            try {
-                // Send request
-                this._send(buffer).then(() => {
-                    // Runs when data event is emitted
-                    const resolveGet = data => {
-                        // Remove self listener
-                        this.removeListener('data', resolveGet);
-
-                        try {
-                            if (options.schema === true) {
-                                // Return whole response
-                                resolve(data);
-                            } else if (options.dps) {
-                                // Return specific property
-                                resolve(data.dps[options.dps]);
-                            } else {
-                                // Return first property by default
-                                resolve(data.dps['1']);
-                            }
-                        } catch (error) {
-                            reject(error);
-                        }
-                    };
-
-                    // Add listener
-                    this.on('data', resolveGet);
-                });
-            } catch (error) {
-                reject(error);
-            }
-        });
-    }
-}
 
 var TuyaDevice = (function () {
     var devices = [];
@@ -126,7 +64,7 @@ var TuyaDevice = (function () {
         this.options = options;
 
         Object.defineProperty(this, 'device', {
-            value: new CustomTuyAPI(JSON.parse(JSON.stringify(this.options)))
+            value: new TuyAPI(JSON.parse(JSON.stringify(this.options)))
         });
 
         this.device.on('data', data => {
@@ -183,7 +121,11 @@ var TuyaDevice = (function () {
     }
 
     TuyaDevice.prototype.toString = function () {
-        return this.type + " (" + this.options.ip + ", " + this.options.id + ", " + this.options.key + ")";
+        if (typeof this.type != "undefined") {
+            return this.type + " (" + this.options.ip + ", " + this.options.id + ", " + this.options.key + ")";
+        } else {
+            return " (" + this.options.ip + ", " + this.options.id + ", " + this.options.key + ")";
+        }
     }
 
     TuyaDevice.prototype.triggerAll = function (name, argument) {

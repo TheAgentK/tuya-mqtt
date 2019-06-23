@@ -79,10 +79,10 @@ function IsJsonString(text) {
  * check mqtt-topic string for old notation with included device type
  * @param {String} topic
  */
-function checkTopicForOldNotation(_topic) {
+function checkTopicNotation(_topic) {
     var topic = _topic.split("/");
     var type = topic[1];
-    var result = (type == "socket" || type == "lightbulb");
+    var result = (type == "socket" || type == "lightbulb" || type == "ver3.1" || type == "ver3.3");
     return result;
 }
 
@@ -94,7 +94,7 @@ function checkTopicForOldNotation(_topic) {
 function getActionFromTopic(_topic) {
     var topic = _topic.split("/");
 
-    if (checkTopicForOldNotation(_topic)) {
+    if (checkTopicNotation(_topic)) {
         return topic[5];
     } else {
         return topic[4];
@@ -111,7 +111,7 @@ function getActionFromTopic(_topic) {
 function getDeviceFromTopic(_topic) {
     var topic = _topic.split("/");
 
-    if (checkTopicForOldNotation(_topic)) {
+    if (checkTopicNotation(_topic)) {
         return {
             id: topic[2],
             key: topic[3],
@@ -137,7 +137,7 @@ function getCommandFromTopic(_topic, _message) {
     var topic = _topic.split("/");
     var command = null;
 
-    if (checkTopicForOldNotation(_topic)) {
+    if (checkTopicNotation(_topic)) {
         command = topic[6];
     } else {
         command = topic[5];
@@ -178,7 +178,13 @@ mqtt_client.on('message', function (topic, message) {
             options: options
         }));
         if (options.ip == "discover") {
-            delete options.ip
+            delete options.ip;
+        } else if (options.type == "ver3.3") {
+            delete options.type;
+            options.version = "3.3";
+        } else if (options.type == "ver3.1") {
+            delete options.type;
+            options.version = "3.1";
         }
         var device = new TuyaDevice(options);
         device.then(function (params) {
@@ -314,7 +320,7 @@ function publishDPS(device, dps) {
 TuyaDevice.onAll('data', function (data) {
     try {
         if (typeof data.dps != "undefined") {
-            debugTuya('Data from device ' + this.type + ' :', data);
+            debugTuya('Data from device ' + this.tuyID + ' :', data);
             var status = data.dps['1'];
             if (typeof status != "undefined") {
                 publishStatus(this, bmap(status));
