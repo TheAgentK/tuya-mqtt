@@ -72,29 +72,40 @@ function getDeviceFromTopic(_topic) {
     var topic = _topic.split("/");
 
     if (checkTopicNotation(_topic)) {
+        // When there are 5 topic levels 
+        // topic 2 is id, and topic 3 is  key
         var options = {
             id: topic[2],
             key: topic[3]
         };
 
-        if (ip !== "discover") {
+        // 4th topic is IP address or "discover" keyword
+        if (topic[4] !== "discover") {
             options.ip = topic[4]
-			if (type == "ver3.3") {
+            // If IP is manually specified check if topic 1 
+            // is protocol version and set accordingly
+			if (topic[1] == "ver3.3") {
 				options.version = "3.3"
-			} else if (type == "ver3.1") {
+			} else if (topic[1] == "ver3.1") {
 				options.version = "3.1"
 			} else {
+                // If topic is not version then it's device type
+                // Not used anymore but still supported for legacy setups
 				options.type = topic[1]
 			};
         };
 		
         return options;
     } else {
+        // When there are 4 topic levels
+        // topic 1 is id, topic 2 is key
 		var options = {
 			id: topic[1],
 			key: topic[2]
 		};
 
+        // If topic 3 is not discover assume it is IP address
+        // Todo: Validate it is an IP address
 		if (topic[3] !== "discover") {
 			options.ip = topic[3]
 		};
