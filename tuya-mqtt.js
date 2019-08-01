@@ -10,11 +10,6 @@ var cleanup = require('./cleanup').Cleanup(onExit);
 var CONFIG = undefined;
 var mqtt_client = undefined;
 
-// Gloabal variable to track all registered Tuya devices
-// Used to disconnect/reconnect devices every 60 minutes
-// due to memory leak in tuyapi >5.1.x
-const tuyaDevices = new Array();
-
 function bmap(istate) {
     return istate ? 'ON' : "OFF";
 }
@@ -72,7 +67,7 @@ function getDeviceFromTopic(_topic) {
     var topic = _topic.split("/");
 
     if (checkTopicNotation(_topic)) {
-        // When there are 5 topic levels 
+        // When there are 5 topic levels
         // topic 2 is id, and topic 3 is  key
         var options = {
             id: topic[2],
@@ -82,7 +77,7 @@ function getDeviceFromTopic(_topic) {
         // 4th topic is IP address or "discover" keyword
         if (topic[4] !== "discover") {
             options.ip = topic[4]
-            // If IP is manually specified check if topic 1 
+            // If IP is manually specified check if topic 1
             // is protocol version and set accordingly
 			if (topic[1] == "ver3.3") {
 				options.version = "3.3"
@@ -94,7 +89,7 @@ function getDeviceFromTopic(_topic) {
 				options.type = topic[1]
 			};
         };
-		
+
         return options;
     } else {
         // When there are 4 topic levels
@@ -270,22 +265,6 @@ function onExit() {
     TuyaDevice.disconnectAll();
 };
 
-/**
- * Function to check if devices has previously been created
- * Used for memory leak hack for tuyapi >5.1.x
- */
-function existingTuyaDevice(device) {
-    var existing = false;
-	tuyaDevices.forEach(tuyaDev => {
-        if (tuyaDev.hasOwnProperty("options")) {
-        	if (tuyaDev.options.id === device.options.id) {
-                existing = true;
-            };
-        };
-    });
-	return existing;
-}
-
 // Simple sleep to pause in async functions
 function sleep(sec) {
     return new Promise(res => setTimeout(res, sec*1000));
@@ -355,12 +334,6 @@ const main = async() => {
         	device.then(function (params) {
             	var device = params.device;
 
-                // If new device add to registered device list
-                // Used only for reconnecting devices due to tuyapi 5.1.1 memory leak
-                if (!existingTuyaDevice(device)) {
-                    tuyaDevices.push(device);
-                }
-
             	switch (action) {
                 	case "command":
                     	var command = getCommandFromTopic(topic, message);
@@ -396,23 +369,3 @@ const main = async() => {
 
 // Call the main code
 main()
-
-// Hack for memory leak in Tuyapi > 5.1.x
-// Disconnect and reconnect all devices every 60 minutes
-setInterval(async function() {
-    tuyaDevices.forEach(tuyaDev => {
-        var device = new TuyaDevice(tuyaDev.options);
-        device.then(function (params) {
-            device = params.device;
-            device.disconnect();
-        });
-    });
-	await sleep(1);
-    tuyaDevices.forEach(tuyaDev => {
-        var device = new TuyaDevice(tuyaDev.options);
-        device.then(function (params) {
-            device = params.device;
-            device.connect();
-        });
-    });
-}, 3600000);

@@ -1,6 +1,6 @@
 {
   "name": "tuya-mqtt",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "",
   "homepage": "https://github.com/TheAgentK/tuya-mqtt#readme",
   "main": "tuya-mqtt.js",
@@ -16,7 +16,7 @@
     "color-convert": "^1.9.3",
     "debug": "^4.1.1",
     "mqtt": "^3.0.0",
-    "tuyapi": "^5.1.1"
+    "tuyapi": "^5.1.2"
   },
   "repository": {
     "type": "git",
