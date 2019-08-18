@@ -104,8 +104,6 @@ var TuyaDevice = (function () {
     }
 
     function TuyaDevice(options, callback) {
-        Object.assign(options, {version: CONFIG.protocolVersion});
-
         var device = this;
         // Check for existing instance
         if (existing = checkExisiting(options.id)) {
