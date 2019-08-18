@@ -4,5 +4,6 @@
     "topic": "tuya/",
     "mqtt_user": "",
     "mqtt_pass": "",
-    "qos": 2
+    "qos": 2,
+    "protocolVersion": 3.1
 }

@@ -31,6 +31,9 @@ if (typeof CONFIG.qos == "undefined") {
 if (typeof CONFIG.retain == "undefined") {
     CONFIG.retain = false;
 }
+if (typeof CONFIG.protocolVersion == "undefined") {
+    CONFIG.protocolVersion = 3.1;
+}
 
 const mqtt_client = mqtt.connect({
     host: CONFIG.host,
@@ -177,6 +180,8 @@ mqtt_client.on('message', function (topic, message) {
             message: message,
             options: options
         }));
+
+        Object.assign(options, {version: CONFIG.protocolVersion});
 
         var device = new TuyaDevice(options);
         device.then(function (params) {
