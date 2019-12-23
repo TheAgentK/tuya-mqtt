@@ -200,7 +200,7 @@ Bridge mqtt:broker:myUnsecureBroker [ host="localhost", secure=false ]
             commandTopic="tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command",
 
             // optional custom mqtt-payloads for ON and OFF
-            on="{ \"dps": 1, \"set\": true },
+            on="{ \"dps\": 1, \"set\": true }",
             off="0"
         ]
     }
