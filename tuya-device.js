@@ -14,8 +14,6 @@ const debugColor = require('debug')('TuyAPI:device:color');
     });
  */
 
-// Helpers
-const Parser = require('tuyapi/lib/message-parser');
 
 /**
  * Extends default TuyAPI-Class to add some more error handlers
@@ -34,7 +32,7 @@ class CustomTuyAPI extends TuyAPI {
         debug(payload);
 
         // Create byte buffer
-        const buffer = Parser.encode({
+        const buffer = this.device.parser.encode({
             data: payload,
             commandByte: 10 // 0x0a
         });
