@@ -3,12 +3,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [2.1.0]
+### Added
+- Added ability to update validate communicaton with device and update state topic by issuing { "schema": true } command
+- Added support for protocol 3.3 either via automatic device discovery or manual specification when using IP address
+
+### Changed
+- Can specify "discover" instead of IP address to automatically find device (only works if device on same IP subnet as system running this script).  This mode will also automatically detect 3.1 and 3.3 protocol devices
+- Can manually specific protocol via ver3.1/ver3.3 in topic line after tuya/
+- Bump Tuyapi version to v5.3.x
+- Bump MQTT version to v4.x.x
+- Moved openHAB config to it's own document since many users use this with other tools
+- Verious other fixes and cleanups
 
 ## [2.0.1]
 ### Added
 - Added capability to set multiple dps values over MQTT-Command
-- 
 - Custom Set-Function for TuyAPI-Class (added error handling for "index [1] not found" error)
 
 ### Changed
