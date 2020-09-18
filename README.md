@@ -42,14 +42,19 @@ node tuya-mqtt.js
 
 // For debugging purpose, to use DEBUG : https://www.npmjs.com/package/debug
 
-//on Linux machines at the bash command prompt:
+//on Linux machines at the bash command prompt, to turn ON DEBUG:
 DEBUG=* tuya-mqtt.js
 
+//on Linux machines at the bash command prompt, to turn OFF DEBUG:
+DEBUG=-* tuya-mqtt.js
 
-// on Windows machines at the cmd.exe command prompt:
-Set DEBUG=* tuya-mqtt.js
+// on Windows machines at the cmd.exe command prompt, to turn ON DEBUG:
+Set DEBUG=* & node c:/openhab2/userdata/etc/scripts/tuya-mqtt.js
+
+// on Windows machines at the cmd.exe command prompt, to turn OFF DEBUG:
+Set DEBUG=-* & node c:/openhab2/userdata/etc/scripts/tuya-mqtt.js
 ```
-URL to [DEBUG](https://www.npmjs.com/package/debug)
+URL to install [DEBUG](https://www.npmjs.com/package/debug)
 
 
 
@@ -68,7 +73,12 @@ Change device state (by topic):
     - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/toggle
     - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/TOGGLE
     - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "dps": 1, "set": true }
+    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "dps": 7, "set": true }
     - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "multiple": true, "data": { "1": true, "7": true } }
+    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "schema": true }
+    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "multiple": true, "data": { "1": true, "2": "scene_4" } }
+    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "multiple": true, "data": 
+                                                              { "1": true, "2": "scene", "6": "c479000025ffc3" } } 
 
 Change device state (by payload)
 Use with OpenHAB 2.X MQTT bindings or others where only a single command topic is preferred:
@@ -86,13 +96,18 @@ NOTE: notice that nothing follows the word command, DO NOT but a "/" in after co
     "toggle"
     "TOGGLE"
     "{ \"dps\": 1, \"set\": true }"
+    "{ \"dps\": 7, \"set\": true }"
     "{ \"multiple\": true, \"data\": { \"1\": true, \"7\": true } }"
+    "{ \"schema\": true }"
+    "{ \"multiple\": true, \"data\": { \"1\": true, \"2\": \"scene_4\" } }"
+    "{ \"multiple\": true, \"data\": { \"1\": true, \"2\": \"scene\", \"6\": \"c479000025ffc3\" } }"
 
 Change color of lightbulb (payload as HSB-Color)
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/color
 
     Example:
     64,0,100
+    0,0,89
 ```
 
 ### MQTT Topic's (read data)
@@ -125,9 +140,9 @@ Switch tuya_kitchen_coffeemachine_mqtt "Steckdose Kaffeemaschine" <socket> (<GRO
 }
 
 Switch tuya_livingroom_ledstrip_tv "LED Regal" <lightbulb> (<GROUPS>) ["Lighting"] {
-    mqtt="<[broker:tuya/lightbulb/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/state:state:default:.*],
-          >[broker:tuya/lightbulb/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/on:command:ON:true],
-          >[broker:tuya/lightbulb/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/off:command:OFF:false]"
+    mqtt="<[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/state:state:default:.*],
+          >[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/on:command:ON:true],
+          >[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/off:command:OFF:false]"
 }
 
 ```
@@ -140,7 +155,7 @@ Group gTuyaLivingColor "Tuya color group" <lightbulb>
 Color tuya_livingroom_colorpicker "Stehlampe farbe" (LivingDining)
 
 String tuya_livingroom_ledstrip_tv_color "Set color [%s]" (gTuyaLivingColor, LivingDining) {
-    mqtt=">[broker:tuya/lightbulb/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/color:command:*:default]"
+    mqtt=">[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/color:command:*:default]"
 }
 
 
@@ -195,12 +210,12 @@ Bridge mqtt:broker:myUnsecureBroker [ host="localhost", secure=false ]
 
     Thing mqtt:topic:myCustomMQTT {
     Channels:
-        Type switch : tuya_kitchen_coffeemachine_mqtt "Kitchen Coffee Machine MQTT Channel" [
+        Type switch : tuya_kitchen_coffeemachine_mqtt_channel "Kitchen Coffee Machine MQTT Channel" [
             stateTopic="tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/state",
             commandTopic="tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command",
 
             // optional custom mqtt-payloads for ON and OFF
-            on="{ \"dps": 1, \"set\": true },
+            on="{ \"dps\": 1, \"set\": true }",
             off="0"
         ]
     }
@@ -209,7 +224,7 @@ Bridge mqtt:broker:myUnsecureBroker [ host="localhost", secure=false ]
 
 # *.item Example
 Switch tuya_kitchen_coffeemachine_mqtt "Kitchen Coffee Machine Switch" <socket> (gKitchen, gTuya) ["Switchable"] {
-    channel="mqtt:topic:myMosquitto:tuya:coffeemachine"
+    channel="mqtt:topic:myUnsecureBroker:myCustomMQTT:tuya_kitchen_coffeemachine_mqtt_channel"
 }
 
 ```
@@ -221,17 +236,18 @@ For one RGB bulb you would need a separate channel with the command topic set to
 
 Bridge mqtt:broker:myUnsecureBroker [ host="localhost", secure=false ]
 {
-
-    Type colorHSB : livingroom_floorlamp_1_color "Livingroom floorlamp color MQTT Channel" [
-        stateTopic="tuya/lightbulb/05200399bcddc2e02ec9/b58cf92e8bc5c899/192.168.178.49/state",
-        commandTopic="tuya/lightbulb/05200399bcddc2e02ec9/b58cf92e8bc5c899/192.168.178.49/color"
-    ]
-
+    Thing mqtt:topic:myCustomMQTT {
+    Channels:
+        Type colorHSB : livingroom_floorlamp_1_color "Livingroom floorlamp color MQTT Channel" [
+            stateTopic="tuya/05200399bcddc2e02ec9/b58cf92e8bc5c899/192.168.178.49/state",
+            commandTopic="tuya/05200399bcddc2e02ec9/b58cf92e8bc5c899/192.168.178.49/color"
+        ]
+    }
 }
 
 # *.item Example
 Color tuya_livingroom_colorpicker "Floorlamp colorpicker" (gLivingroom){
-    channel="mqtt:topic:myMosquitto:tuya:livingroom_floorlamp_1_color"
+    channel="mqtt:topic:myUnsecureBroker:myCustomMQTT:livingroom_floorlamp_1_color"
 }
 
 ```
@@ -241,9 +257,15 @@ Color tuya_livingroom_colorpicker "Floorlamp colorpicker" (gLivingroom){
 
 Switch item=tuya_kitchen_coffeemachine_mqtt
 
+# turn the color bulb off or on
+Switch item=tuya_livingroom_colorpicker label="RGB lamp [%s]" 
 
-# Colorpicker for Lightbulbs
-Colorpicker item=tuya_livingroom_colorpicker label="RGB lamp color" sendFrequency=30000
+# pick the color level to send to the color bulb via MQTT color Channel
+Slider item=tuya_livingroom_colorpicker label="RGB lamp level [%s]" minValue=0 maxValue=100 step=1
+
+# color picked and sent via MQTT Color channel
+Colorpicker item=tuya_livingroom_colorpicker label="RGB lamp color [%s]" icon="colorpicker" sendFrequency=30000
+
 
 ```
 

@@ -27,6 +27,58 @@ function TuyaColorLight() {
 }
 
 /**
+ *  calculate color value from given brightness percentage
+ * @param (Integer) percentage 0-100 percentage value
+ * @returns (Integer) color value from 25 - 255
+ * @private
+ */
+TuyaColorLight.prototype._convertBrightnessPercentageToVal = function(brt_percentage){
+    // the brightness scale does not start at 0 but starts at 25 - 255
+    // this linear equation is a better fit to the conversion to 255 scale
+    var tmp = Math.round(2.3206*brt_percentage+22.56);
+    debug('Converted brightness percentage ' + brt_percentage + ' to: ' + tmp);
+    return tmp;
+}
+
+/**
+ *  calculate percentage from brightness color value
+ * @param brt_val 25 - 255 brightness color value
+ * @returns {Integer} 0 - 100 integer percent
+ * @private
+ */
+TuyaColorLight.prototype._convertValtoBrightnessPercentage = function(brt_val){
+    var tmp = Math.round( (brt_val-22.56)/2.3206);
+    debug('Converted brightness value ' + brt_val + ' to: ' + tmp);
+    return tmp;
+}
+
+/**
+ *  calculate color value from given saturation percentage  OR color temperature percentage
+ * @param (Integer) temp_percentage 0-100 percentage value
+ * @returns {Integer} saturation or color temperature value from 0 - 255
+ * @private
+ */
+TuyaColorLight.prototype._convertSATorColorTempPercentageToVal = function(temp_percentage){
+ // the saturation OR temperature scale does start at 0 - 255
+ // this is a perfect linear equation fit for the saturation OR temperature scale conversion
+    var tmp = Math.round(((2.5498*temp_percentage)-0.4601));
+    debug('Converted saturation OR temperature percentage ' + temp_percentage + ' to: ' + tmp);
+    return tmp;
+}
+
+/**
+ * calculate percentage from saturation value OR color temperature value
+ * @param temp_val 0 - 255 saturation or color temperature value
+ * @returns {Integer} 0 - 100 integer percent
+ * @private
+ */
+TuyaColorLight.prototype._convertValtoSATorColorTempPercentage = function(temp_val){
+    var tmp = Math.round( (temp_val+0.4601/2.5498));
+    debug('Converted saturation OR temperature value ' + temp_val + ' to: ' + tmp);
+    return tmp;
+}
+
+/**
  * calculate color value from given percentage
  * @param  {Integer} percentage 0-100 percentage value
  * @returns {Integer} color value from 0-255
@@ -106,6 +158,18 @@ TuyaColorLight.prototype._ValIsHex = function (h) {
 };
 
 /**
+ * get width Hex digits from given value
+ * @param (Integer) value, decimal value to convert to hex string
+ * @param (Integer) width, the number of hex digits to return
+ * @returns {string} value as HEX containing (width) number of hex digits
+ * @private
+ */
+TuyaColorLight.prototype._getHex = function (value,width){
+    var hex = (value+Math.pow(16, width)).toString(16).slice(-width).toLowerCase();
+    debug('value: ' + value + ' hex: ' + hex);
+    return hex;
+}
+/**
  * get AlphaHex from percentage brightness
  * @param  {Integer} brightness
  * @return {string} brightness as HEX value
@@ -138,7 +202,8 @@ TuyaColorLight.prototype.setSaturation = function (value) {
  */
 TuyaColorLight.prototype.setBrightness = function (value) {
     this.brightness = value;
-    var newValue = this._convertPercentageToVal(value);
+    //var newValue = this._convertPercentageToVal(value);
+    var newValue = this._convertBrightnessPercentageToVal(value);
     debug("BRIGHTNESS from UI: " + value + ' Converted from 100 to 255 scale: ' + newValue);
 }
 
@@ -219,29 +284,65 @@ TuyaColorLight.prototype.getDps = function () {
 
     var lightness = Math.round(this.brightness / 2);
     var brightness = this.brightness;
-    var apiBrightness = this._convertPercentageToVal(brightness);
-    var alphaBrightness = this._getAlphaHex(brightness);
+    //var apiBrightness = this._convertPercentageToVal(brightness);
+    var apiBrightness = this._convertBrightnessPercentageToVal(brightness);
+
+    //var alphaBrightness = this._getAlphaHex(brightness);
+    var alphaBrightness = this._getHex(apiBrightness,2);
 
     var hexColor1 = convert.hsl.hex(color.H, color.S, lightness);
 
-    var hexColor2 = convert.hsl.hex(0, 0, lightness);
+    //var hexColor2 = convert.hsl.hex(0, 0, lightness);
+    var hexColor2 = this._getHex(color.H,4);
+    hexColor2 = hexColor2 + this._getHex(this._convertSATorColorTempPercentageToVal(color.S),2);
 
     var colorTemperature = this.colorTemperature;
 
     var lightColor = (hexColor1 + hexColor2 + alphaBrightness).toLowerCase();
 
-    var temperature = (this.colorMode === 'colour') ? 255 : this._convertColorTemperature(colorTemperature);
+    //var temperature = (this.colorMode === 'colour') ? 255 : this._convertColorTemperature(colorTemperature);
+    // color temperature percentage is at a fixed 51%
+    var temperature = this._convertSATorColorTempPercentageToVal(51);
 
-    dpsTmp = {
-        '1': true,
-        '2': this.colorMode,
-        '3': apiBrightness,
-        '4': temperature,
-        '5': lightColor
-        // '6' : hexColor + hexColor + 'ff'
-    };
-    debug("dps", dpsTmp);
-    return dpsTmp;
+    // if the bulb is in colour mode than the dps 3 and dps 4 are ignored by the bulb but if you set it now
+    // some tuya bulbs will ignore dps 5 because you set dps 3 or dps 4
+    // FOR colour mode the bulb looks at dps 1, dps 2, and dps 5.
+    // DPS 5 is in the following format:
+    // HSL to HEX format are the leftmost hex digits (hex digits 14 - 9)
+    // hex digits 8 - 5 are the HSB/HSL Hue value in HEX format
+    // hex digits 4 - 3 are the HSB/HSL Saturation percentage as a value (converted to 0-255 scale) in HEX format
+    // hex digits 2 - 1 are the HSB Brightness percentage as a value (converted to 25-255 scale) in HEX format
+
+    if (this.colorMode === 'colour') {
+        dpsTmp = {
+            '1': true,
+            '2': this.colorMode,
+            //'3': apiBrightness,
+            //'4': temperature,
+            '5': lightColor
+            // '6' : hexColor + hexColor + 'ff'
+        };
+        debug("dps", dpsTmp);
+        return dpsTmp;
+    }
+
+    // if the bulb is in white mode then the dps 5 value is ignored by the bulb but if you set dps 5 value now
+    // you may not get a response back from the bulb on the dps values
+    // FOR white mode the bulb looks at dps 1, dps 2, dps 3 and dps 4
+    // DPS 3 is the HSB/HSL Brightness percentage converted to a value from 25 to 255 in decimal format
+    // DPS 4 is the HSB/HSL Saturation percentage converted to a value from 0 to 255 in decimal format
+    if (this.colorMode === 'white'){
+        dpsTmp = {
+            '1': true,
+            '2': this.colorMode,
+            '3': apiBrightness,
+            '4': temperature,
+            //'5': lightColor
+            // '6' : hexColor + hexColor + 'ff'
+        };
+        debug("dps", dpsTmp);
+        return dpsTmp;
+    }
 }
 
 module.exports = TuyaColorLight;
