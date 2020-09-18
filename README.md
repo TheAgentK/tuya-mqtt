@@ -62,12 +62,13 @@ Set DEBUG=-* & node c:/openhab2/userdata/etc/scripts/tuya-mqtt.js
     tuya/ver3.3/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip/state
     tuya/ver3.3/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command
 ```
-Example command topic to set the device state:
+### Example command topic to set the device state:
 ```
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command
-
-    Example MQTT message payload for basic command (assumes DPS 1 is "on/off" control):
-    "ON" 
+```
+### Example MQTT message payload for basic command (assumes DPS 1 is "on/off" control):
+```
+    "ON"
     "OFF"
     "on"
     "off"
@@ -75,15 +76,16 @@ Example command topic to set the device state:
     "0"
     "toggle"
     "TOGGLE"
-
-    Example MQTT message payload for advanced commands (set any DPS value):
+```
+### Example MQTT message payload for advanced commands (set any DPS value):
+```
     "{ \"dps\": 1, \"set\": true }"
     "{ \"dps\": 7, \"set\": true }"
     "{ \"multiple\": true, \"data\": { \"1\": true, \"7\": true } }"
     "{ \"schema\": true }"
     "{ \"multiple\": true, \"data\": { \"1\": true, \"2\": \"scene_4\" } }"
     "{ \"multiple\": true, \"data\": { \"1\": true, \"2\": \"scene\", \"6\": \"c479000025ffc3\" } }"
-
+```
 Command topic for color change of lightbulb
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/color
 
