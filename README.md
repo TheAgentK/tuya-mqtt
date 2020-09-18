@@ -2,10 +2,11 @@
 MQTT interface for Tuya home automation devices sold under various names.
 This is a wrapper script for the Project codetheweb/tuyapi. https://github.com/codetheweb/tuyapi
 
-This project provides an MQTT gateway for locally controlling home automation devices made by Tuya Inc.  To use this script you will need to obtain the device ID and local keys for each of your devices after they are configured via the Tuya/Smart Life or other Tuya compatible app (there are many).  With this information it is possible to communicate locally with Tuya devices using protocol 3.1 and 3.3, without using the Tuya Cloud service, however, getting the keys requires signing up for a Tuya IOT developer account or using one of several other alternative methods (such as dumping the memory of a Tuya based app running on Andriod).  Acquiring keys is not part of this project, please see the instructions at the TuyAPI project (on which this script is based) available at https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md.
+This project provides an MQTT gateway for locally controlling home automation devices made by Tuya Inc.  To use this script you will need to obtain the device ID and local keys for each of your devices after they are configured via the Tuya/Smart Life or other Tuya compatible app (there are many).  With this information it is possible to communicate locally with Tuya devices using protocol 3.1 and 3.3, without using the Tuya Cloud service, however, getting the keys requires signing up for a Tuya IOT developer account or using one of several other alternative methods (such as dumping the memory of a Tuya based app running on Andriod).  Acquiring keys is not part of this project, please see the instructions at the TuyAPI project (on which this script is based) available at the TuyAPI project site:
+
+https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md.
 
 ## Instructions:
-
 Download this project to your system into any directory (example below uses /opt/tuya-mqtt) and install tuyapi from the same folder that the tuya-mqtt.js is in
 ```
 // switch to opt directory
@@ -21,11 +22,8 @@ cd tuya-mqtt
 npm install
 ```
 
-This  found here: https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md
-
 
 ## Basic Usage
-
 ### Create your configuration file:
 ```
 cp config.json.sample config.json
