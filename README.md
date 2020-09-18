@@ -114,7 +114,7 @@ Returns JSON.stringify(dps) values, use with care, does not always contain all d
 Not all Tuya protocols are supported.  For example, some devices use protocol 3.2 which currently remains unsupported by the TuyAPI project due to lack of enough information to reverse engineer the protcol.  If you are unable to control your devices with tuya-mqtt please verify that you can query and control them with tuya-cli first.  If tuya-cli works, then this script should also work, if it doesn't then this script will not work either.
 
 ## Integration with other Home Automation tools
-openHAB examples are (here)[docs/openHAB.md].
+openHAB examples are [here](docs/openHAB.md).
 
 ## Contributors
 - [TheAgentK](https://github.com/TheAgentK)
