@@ -63,34 +63,11 @@ If discovery will not work for your case you can still use the IP address, but, 
     tuya/ver3.3/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip/state
     tuya/ver3.3/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command
 ```
-Change device state (by topic):
-    tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/<STATE>
-
-    Example:
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/on
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/off
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/ON
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/OFF
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/1
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/0
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/toggle
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/TOGGLE
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "dps": 1, "set": true }
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "dps": 7, "set": true }
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "multiple": true, "data": { "1": true, "7": true } }
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "schema": true }
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "multiple": true, "data": { "1": true, "2": "scene_4" } }
-    - tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/{ "multiple": true, "data": 
-                                                              { "1": true, "2": "scene", "6": "c479000025ffc3" } } 
-
-Change device state (by payload)
-Use with OpenHAB 2.X MQTT bindings or others where only a single command topic is preferred:
-NOTE: notice that nothing follows the word command, DO NOT but a "/" in after command.
-
+Command topic to change device state
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command
 
-    Example:
-    "ON"
+    Example MQTT message payload for basic command (assumes DPS 1 is "on/off" control):
+    "ON" 
     "OFF"
     "on"
     "off"
@@ -98,6 +75,8 @@ NOTE: notice that nothing follows the word command, DO NOT but a "/" in after co
     "0"
     "toggle"
     "TOGGLE"
+
+    Example MQTT message payload for advanced commands (set any DPS value):
     "{ \"dps\": 1, \"set\": true }"
     "{ \"dps\": 7, \"set\": true }"
     "{ \"multiple\": true, \"data\": { \"1\": true, \"7\": true } }"
@@ -105,15 +84,15 @@ NOTE: notice that nothing follows the word command, DO NOT but a "/" in after co
     "{ \"multiple\": true, \"data\": { \"1\": true, \"2\": \"scene_4\" } }"
     "{ \"multiple\": true, \"data\": { \"1\": true, \"2\": \"scene\", \"6\": \"c479000025ffc3\" } }"
 
-Change color of lightbulb (payload as HSB-Color)
+Command topic for color change of lightbulb
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/color
 
-    Example:
+    Example MQTT message payload:
     64,0,100
     0,0,89
 ```
 
-### MQTT Topic's (read data)
+### MQTT State Topic's (get device data)
 ```
 Current device state (allways DPS[1]-Value):
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/state
