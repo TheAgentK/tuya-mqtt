@@ -66,7 +66,7 @@ Set DEBUG=-* & node c:/openhab2/userdata/etc/scripts/tuya-mqtt.js
 ```
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command
 ```
-### Example MQTT message payload for basic command (assumes DPS 1 is "on/off" control):
+### Example MQTT message payload for basic commands (default controls DPS[1] value, assumes true/false state control):
 ```
     "ON"
     "OFF"
@@ -86,7 +86,8 @@ Set DEBUG=-* & node c:/openhab2/userdata/etc/scripts/tuya-mqtt.js
     "{ \"multiple\": true, \"data\": { \"1\": true, \"2\": \"scene_4\" } }"
     "{ \"multiple\": true, \"data\": { \"1\": true, \"2\": \"scene\", \"6\": \"c479000025ffc3\" } }"
 ```
-Command topic for color change of lightbulb
+### Example command topic for color change of lightbulb
+```
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/color
 
     Example MQTT message payload:
@@ -94,23 +95,25 @@ Command topic for color change of lightbulb
     0,0,89
 ```
 
-### MQTT State Topic's (get device data)
-```
-Current device state (allways DPS[1]-Value):
+### Example state topics (get device data)
+### Get current device state (always DPS[1] value):
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/state
 
-Device DPS-Values:
-    // returns JSON.stringify(dps) values, use with care, does not always contain all dps values
+### Get all available device DPS values
+Returns JSON.stringify(dps) values, use with care, does not always contain all dps values
+```
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/dps
+```
 
-    // return single dps data value
+### Get any single DPS data value
+```
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/dps/<tuya-dps-id>
 ```
 
 ## Issues
 Not all Tuya protocols are supported.  For example, some devices use protocol 3.2 which currently remains unsupported by the TuyAPI project due to lack of enough information to reverse engineer the protcol.  If you are unable to control your devices with tuya-mqtt please verify that you can query and control them with tuya-cli first.  If tuya-cli works, then this script should also work, if it doesn't then this script will not work either.
 
-## Integration with other tools
+## Integration with other Home Automation tools
 openHAB examples are (here)[docs/openHAB.md].
 
 ## Contributors
