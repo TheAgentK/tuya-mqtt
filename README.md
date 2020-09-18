@@ -52,18 +52,18 @@ Set DEBUG=-* & node c:/openhab2/userdata/etc/scripts/tuya-mqtt.js
 ```
 
 ### MQTT Topic's (send data)
-**-----IMPORTANT NOTE-----**
-**It's possible to replace the device IP address \<tuyAPI-ip\> with the word "discover" to have the API attempt to automatically discover the device IP address.  This capability allows support for 3.3 protocol devices without additional configuraiton but does require the system running this script to be on the same IP subnet as the Tuya device because discover relies on UDP broadcast from the devices.**
+**It's possible to replace the device IP address \<tuyAPI-ip\> with the word "discover" to have the API attempt to automatically discover the device IP address.  This allows support for 3.3 protocol devices transparently, without additional configuraiton, but does require the system running this script to be on the same IP subnet as the Tuya device since the discovery protocol relies on UDP broadcast packets from the devices.**
 ```
     tuya/<tuyAPI-id>/<tuyAPI-key>/discover/state
     tuya/<tuyAPI-id>/<tuyAPI-key>/discover/command
 ```
-If discovery will not work for your case you can still use the IP address, but, to use protocol 3.3 you must specify it in the topic explicitly
+**If discovery will not work for your case you can still use the IP address, but, to use protocol 3.3 you must specify it in the topic explicitly**
 ```
     tuya/ver3.3/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip/state
     tuya/ver3.3/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command
 ```
-Command topic to change device state
+Example command topic to set the device state:
+```
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command
 
     Example MQTT message payload for basic command (assumes DPS 1 is "on/off" control):
