@@ -208,6 +208,12 @@ var TuyaDevice = (function () {
         });
     }
 
+    TuyaDevice.prototype.schema = function(obj){
+        return this.get(obj).then((status) => {
+            debug("get", obj);
+        });
+    }
+
     TuyaDevice.prototype.setColor = function (hexColor) {
         if (!this.connected) return;
         debugColor("Set color to: ", hexColor);
