@@ -2,29 +2,17 @@
 MQTT interface for Tuya home automation devices sold under various names.
 This is a wrapper script for the Project codetheweb/tuyapi. https://github.com/codetheweb/tuyapi
 
-This project provides an MQTT client for communication with the home automation devices.
-
-:exclamation: There is a greate Step-By-Step guide from user HolgiHab at openhab community ([Step-By-Step Guide](
-https://community.openhab.org/t/step-by-step-guide-for-adding-tuya-bulbs-smart-life-to-oh2-using-tuya-mqtt-js-by-agentk/59371)). This guide is not only for light bulbs, but also applies to sockets. :exclamation:
-
-:exclamation: This branch of tuya-mqtt provides initial support for Tuya devices using firmware that implements the 3.3 tuya protocol (fully encrypted communications).  Because tuyapi requires specifying the protocol version when the device IP is specified directly, this required modifications to the script to either support setting the protocol version, or use the tuyapi auto discovery function.  This code attempts to implement the minimum changes required to provide support for this protcol via a simple implementation of automatic device discovery.
-
-To support this it is now possible replace the IP address in the topic (tuyAPI-key) with the word "discover" which will trigger the script to use the automatic device discovery capability.  This has the added advantage that, if the IP of the device changes, no changes are required to the topic.  To use automatic IP discovery the format of the topics are as follows:
-
-```
-    tuya/<tuyAPI-id>/<tuyAPI-key>/discover/state
-    tuya/<tuyAPI-id>/<tuyAPI-key>/discover/command
-```
-:exclamation:
+This project provides an MQTT gateway for locally controlling home automation devices made by Tuya Inc.  To use this script you will need to obtain the device ID and local keys for each of your devices after they are configured via the Tuya/Smart Life or other Tuya compatible app (there are many).  With this information it is possible to communicate locally with Tuya devices using protocol 3.1 and 3.3, without using the Tuya Cloud service, however, getting the keys requires signing up for a Tuya IOT developer account or using one of several other alternative methods (such as dumping the memory of a Tuya based app running on Andriod).  Acquiring keys is not part of this project, please see the instructions at the TuyAPI project (on which this script is based) available at https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md.
 
 ## Instructions:
 
-Download this project to your openhab2-script-folder "/etc/openhab2/scripts" and install tuyapi from the same folder that the tuya-mqtt.js is in
+Download this project to your system into any directory (example below uses /opt/tuya-mqtt) and install tuyapi from the same folder that the tuya-mqtt.js is in
 ```
-cd /etc/openhab2/scripts
+// switch to opt directory
+cd /opt
 
 // clone this project
-git clone git@github.com:TheAgentK/tuya-mqtt.git
+git clone https://github.com/TheAgentK/tuya-mqtt
 
 // change directory to the project directory
 cd tuya-mqtt
@@ -33,7 +21,7 @@ cd tuya-mqtt
 npm install
 ```
 
-See the setup instructions found here: https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md
+This  found here: https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md
 
 
 ## Basic Usage
@@ -64,16 +52,18 @@ Set DEBUG=* & node c:/openhab2/userdata/etc/scripts/tuya-mqtt.js
 // on Windows machines at the cmd.exe command prompt, to turn OFF DEBUG:
 Set DEBUG=-* & node c:/openhab2/userdata/etc/scripts/tuya-mqtt.js
 ```
-URL to install [DEBUG](https://www.npmjs.com/package/debug)
-
-
 
 ### MQTT Topic's (send data)
-
 **-----IMPORTANT NOTE-----**
-
 **It's possible to replace the device IP address \<tuyAPI-ip\> with the word "discover" to have the API attempt to automatically discover the device IP address.  This capability allows support for 3.3 protocol devices without additional configuraiton but does require the system running this script to be on the same IP subnet as the Tuya device because discover relies on UDP broadcast from the devices.**
-
+```
+    tuya/<tuyAPI-id>/<tuyAPI-key>/discover/state
+    tuya/<tuyAPI-id>/<tuyAPI-key>/discover/command
+```
+If discovery will not work for your case you can still use the IP address, but, to use protocol 3.3 you must specify it in the topic explicitly
+```
+    tuya/ver3.3/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip/state
+    tuya/ver3.3/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command
 ```
 Change device state (by topic):
     tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/<STATE>
@@ -139,150 +129,10 @@ Device DPS-Values:
 ```
 
 ## Issues
-There are some reliability issues with tuyapi. Latest changes changed the syntax but still getting error maybe at an even higher rate.
+Not all Tuya protocols are supported.  For example, some devices use protocol 3.2 which currently remains unsupported by the TuyAPI project due to lack of enough information to reverse engineer the protcol.  If you are unable to control your devices with tuya-mqtt please verify that you can query and control them with tuya-cli first.  If tuya-cli works, then this script should also work, if it doesn't then this script will not work either.
 
-All questions regarding the tuyAPI please ask in the project https://github.com/codetheweb/tuyapi .
-
-
-## Example items for OpenHAB 1.x Bindings (still works with OH > 2.4 but only if legacy 1.x MQTT bindings are enabled)
-### simple switch on/off
-```
-
-Switch tuya_kitchen_coffeemachine_mqtt "Steckdose Kaffeemaschine" <socket> (<GROUPS>) ["Switchable"] {
-    mqtt="<[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/state:state:default:.*],
-          >[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/on:command:ON:true],
-          >[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/off:command:OFF:false]"
-}
-
-Switch tuya_livingroom_ledstrip_tv "LED Regal" <lightbulb> (<GROUPS>) ["Lighting"] {
-    mqtt="<[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/state:state:default:.*],
-          >[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/on:command:ON:true],
-          >[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command/off:command:OFF:false]"
-}
-
-```
-
-### change color of lightbulb
-```
-
-# .items
-Group gTuyaLivingColor "Tuya color group" <lightbulb>
-Color tuya_livingroom_colorpicker "Stehlampe farbe" (LivingDining)
-
-String tuya_livingroom_ledstrip_tv_color "Set color [%s]" (gTuyaLivingColor, LivingDining) {
-    mqtt=">[broker:tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/color:command:*:default]"
-}
-
-
-
-# .rules
-import org.openhab.core.library.types.HSBType;
-
-rule "Set HSB value of item RGBLed to RGB color value"
-    when
-        Item tuya_livingroom_colorpicker received command
-    then
-        var appName = "Colorpicker.livingroom"
-        var color = receivedCommand.toString;
-
-        // get all colors and send it via mqtt if light ist enabled
-        gTuyaLivingColor.members.forEach[ i |
-            var name = i.name;
-            var stateName = name.toString.split("_color").get(0);
-            var stateItem = gTuyaLights.allMembers.filter [ conf | conf.name.contains(stateName.toString) ].head;
-
-            if(stateItem.state == ON){
-                logInfo(appName, name + " change to color: " + color);
-                i.sendCommand(color);
-                Thread::sleep(400);
-            }
-        ]
-    end
-
-```
-
-## Example items for OpenHAB 2.4 Bindings
-### simple switch on/off
-
-With OpenHAB 2.X MQTT bindings you can add devices using a generic MQTT Thing via PaperUI or 
-configuration files.  For PaperUI simply at the generic MQTT Thing and set the state and
-command topics as follows:
-```
-
-    tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/state
-
-    tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command
-
-```
-
-If you prefer using configuration files vs PaperUI, it should look something like this:
-See also OpenHAB 2.X MQTT binding [documentation](https://www.openhab.org/v2.4/addons/bindings/mqtt.generic/)
-
-```
-
-Bridge mqtt:broker:myUnsecureBroker [ host="localhost", secure=false ]
-{
-
-    Thing mqtt:topic:myCustomMQTT {
-    Channels:
-        Type switch : tuya_kitchen_coffeemachine_mqtt_channel "Kitchen Coffee Machine MQTT Channel" [
-            stateTopic="tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/state",
-            commandTopic="tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/command",
-
-            // optional custom mqtt-payloads for ON and OFF
-            on="{ \"dps\": 1, \"set\": true }",
-            off="0"
-        ]
-    }
-
-}
-
-# *.item Example
-Switch tuya_kitchen_coffeemachine_mqtt "Kitchen Coffee Machine Switch" <socket> (gKitchen, gTuya) ["Switchable"] {
-    channel="mqtt:topic:myUnsecureBroker:myCustomMQTT:tuya_kitchen_coffeemachine_mqtt_channel"
-}
-
-```
-
-For one RGB bulb you would need a separate channel with the command topic set to
-`tuya/<tuyAPI-id>/<tuyAPI-key>/<tuyAPI-ip>/color` and link that to your color item.
-
-```
-
-Bridge mqtt:broker:myUnsecureBroker [ host="localhost", secure=false ]
-{
-    Thing mqtt:topic:myCustomMQTT {
-    Channels:
-        Type colorHSB : livingroom_floorlamp_1_color "Livingroom floorlamp color MQTT Channel" [
-            stateTopic="tuya/05200399bcddc2e02ec9/b58cf92e8bc5c899/192.168.178.49/state",
-            commandTopic="tuya/05200399bcddc2e02ec9/b58cf92e8bc5c899/192.168.178.49/color"
-        ]
-    }
-}
-
-# *.item Example
-Color tuya_livingroom_colorpicker "Floorlamp colorpicker" (gLivingroom){
-    channel="mqtt:topic:myUnsecureBroker:myCustomMQTT:livingroom_floorlamp_1_color"
-}
-
-```
-
-#### Basic UI sitemap
-```
-
-Switch item=tuya_kitchen_coffeemachine_mqtt
-
-# turn the color bulb off or on
-Switch item=tuya_livingroom_colorpicker label="RGB lamp [%s]" 
-
-# pick the color level to send to the color bulb via MQTT color Channel
-Slider item=tuya_livingroom_colorpicker label="RGB lamp level [%s]" minValue=0 maxValue=100 step=1
-
-# color picked and sent via MQTT Color channel
-Colorpicker item=tuya_livingroom_colorpicker label="RGB lamp color [%s]" icon="colorpicker" sendFrequency=30000
-
-
-```
+## Integration with other tools
+openHAB examples are (here)[docs/openHAB.md].
 
 ## Contributors
 - [TheAgentK](https://github.com/TheAgentK)
