@@ -180,7 +180,7 @@ const main = async() => {
     }
 
     try {
-        tuyaDevices = fs.readFileSync('./devices.json', 'utf8');
+        tuyaDevices = fs.readFileSync('./devices.conf', 'utf8');
         tuyaDevices = json5.parse(tuyaDevices)
     } catch (e) {
         console.error("Devices file not found!")

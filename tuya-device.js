@@ -6,11 +6,11 @@ const debugColor = require('debug')('TuyAPI:device:color');
 
 /**
  *
-    var steckdose = new TuyaDevice({
+    var device = new TuyaDevice({
         id: '03200240600194781244',
         key: 'b8bdebab418f5b55',
         ip: '192.168.178.45',
-        type: "ver33" 
+        version: "3.3" 
     });
  */
 
@@ -65,65 +65,31 @@ var TuyaDevice = (function () {
             this.topicLevel = this.options.id;
         }
 
-        if (!this.options.ip) {
-            const findOptions = {
-                id: this.options.id,
-                key: "yGAdlopoPVldABfn"
+        Object.defineProperty(this, 'device', {
+            value: new TuyAPI(JSON.parse(JSON.stringify(this.options)))
+        });
+
+        this.device.on('data', data => {
+            if (typeof data == "string") {
+                debugError('Data from device not encrypted:', data.replace(/[^a-zA-Z0-9 ]/g, ""));
+            } else {
+                debug('Data from device:', data);
+                device.triggerAll('data', data);
             }
-            findDevice = new TuyAPI(JSON.parse(JSON.stringify(findOptions)))
-            findDevice.find().then(() => {
-                this.options.ip = findDevice.device.ip
-                this.options.version = findDevice.device.version
-                Object.defineProperty(this, 'device', {
-                    value: new TuyAPI(JSON.parse(JSON.stringify(this.options)))
-                });
-    
-                this.device.on('data', data => {
-                    if (typeof data == "string") {
-                        debugError('Data from device not encrypted:', data.replace(/[^a-zA-Z0-9 ]/g, ""));
-                    } else {
-                        debug('Data from device:', data);
-                        device.triggerAll('data', data);
-                    }
-                });
-    
-                devices.push(this);
-    
-                // Find device on network
-                debug("Search device in network");
-                this.find().then(() => {
-                    debug("Device found in network");
-                    // Connect to device
-                    this.device.connect();
-                });    
-            });
-        } else {
-            Object.defineProperty(this, 'device', {
-                value: new TuyAPI(JSON.parse(JSON.stringify(this.options)))
-            });
+        });
 
-            this.device.on('data', data => {
-                if (typeof data == "string") {
-                    debugError('Data from device not encrypted:', data.replace(/[^a-zA-Z0-9 ]/g, ""));
-                } else {
-                    debug('Data from device:', data);
-                    device.triggerAll('data', data);
-                }
-            });
+        devices.push(this);
 
-            devices.push(this);
-
-            // Find device on network
-            debug("Search device in network");
-            this.find().then(() => {
-                debug("Device found in network");
-                // Connect to device
-                this.device.connect();
-            });
-        }
+        // Find device on network
+        debug("Search device in network");
+        this.find().then(() => {
+            debug("Device found in network");
+            // Connect to device
+            this.device.connect();
+        });
 
         /**
-         * @return promis to wait for connection
+         * @return Promise to wait for connection
          */
         return new Promise((resolve, reject) => {
             this.device.on('connected', () => {
@@ -158,11 +124,7 @@ var TuyaDevice = (function () {
     }
 
     TuyaDevice.prototype.toString = function () {
-        if (typeof this.type != "undefined") {
-            return this.type + " (" + this.options.ip + ", " + this.options.id + ", " + this.options.key + ")";
-        } else {
-            return " (" + this.options.ip + ", " + this.options.id + ", " + this.options.key + ")";
-        }
+        return this.name + " (" + this.options.ip + ", " + this.options.id + ", " + this.options.key + ")";
     }
 
     TuyaDevice.prototype.triggerAll = function (name, argument) {
@@ -194,7 +156,7 @@ var TuyaDevice = (function () {
         return new Promise((resolve, reject) => {
             this.device.set(options).then((result) => {
                 this.get().then(() => {
-                    debug("set completed ");
+                    debug("Set completed ");
                     resolve(result);
                 });
             });
