@@ -18,14 +18,12 @@ var TuyaDevice = (function () {
     var devices = [];
     var events = {};
 
-    function checkExisiting(id) {
+    function checkExisiting(options) {
         var existing = false;
         // Check for existing instance
         devices.forEach(device => {
-            if (device.hasOwnProperty("options")) {
-                if (id === device.options.id) {
-                    existing = device;
-                }
+            if (device.topicLevel == options.topicLevel) {
+                existing = device;
             }
         });
         return existing;
@@ -42,10 +40,11 @@ var TuyaDevice = (function () {
         });
     }
 
-    function TuyaDevice(options, callback) {
+    function TuyaDevice(options) {
         var device = this;
-        // Check for existing instance
-        if (existing = checkExisiting(options.id)) {
+
+        // Check for existing instance by matching topicLevel value
+        if (existing = checkExisiting(options)) {
             return new Promise((resolve, reject) => {
                 resolve({
                     status: "connected",
@@ -58,32 +57,70 @@ var TuyaDevice = (function () {
             return new TuyaDevice(options);
         }
 
-        options.type = options.type || undefined;
-
-        this.type = options.type;
         this.options = options;
 
-        Object.defineProperty(this, 'device', {
-            value: new TuyAPI(JSON.parse(JSON.stringify(this.options)))
-        });
+        if (this.options.name) {
+            this.topicLevel = this.options.name.toLowerCase().replace(/ /g,"_");
+        } else {
+            this.topicLevel = this.options.id;
+        }
 
-        this.device.on('data', data => {
-            if (typeof data == "string") {
-                debugError('Data from device not encrypted:', data.replace(/[^a-zA-Z0-9 ]/g, ""));
-            } else {
-                debug('Data from device:', data);
-                device.triggerAll('data', data);
+        if (!this.options.ip) {
+            const findOptions = {
+                id: this.options.id,
+                key: "yGAdlopoPVldABfn"
             }
-        });
+            findDevice = new TuyAPI(JSON.parse(JSON.stringify(findOptions)))
+            findDevice.find().then(() => {
+                this.options.ip = findDevice.device.ip
+                this.options.version = findDevice.device.version
+                Object.defineProperty(this, 'device', {
+                    value: new TuyAPI(JSON.parse(JSON.stringify(this.options)))
+                });
+    
+                this.device.on('data', data => {
+                    if (typeof data == "string") {
+                        debugError('Data from device not encrypted:', data.replace(/[^a-zA-Z0-9 ]/g, ""));
+                    } else {
+                        debug('Data from device:', data);
+                        device.triggerAll('data', data);
+                    }
+                });
+    
+                devices.push(this);
+    
+                // Find device on network
+                debug("Search device in network");
+                this.find().then(() => {
+                    debug("Device found in network");
+                    // Connect to device
+                    this.device.connect();
+                });    
+            });
+        } else {
+            Object.defineProperty(this, 'device', {
+                value: new TuyAPI(JSON.parse(JSON.stringify(this.options)))
+            });
 
-        devices.push(this);
-        // Find device on network
-        debug("Search device in network");
-        this.find().then(() => {
-            debug("Device found in network");
-            // Connect to device
-            this.device.connect();
-        });
+            this.device.on('data', data => {
+                if (typeof data == "string") {
+                    debugError('Data from device not encrypted:', data.replace(/[^a-zA-Z0-9 ]/g, ""));
+                } else {
+                    debug('Data from device:', data);
+                    device.triggerAll('data', data);
+                }
+            });
+
+            devices.push(this);
+
+            // Find device on network
+            debug("Search device in network");
+            this.find().then(() => {
+                debug("Device found in network");
+                // Connect to device
+                this.device.connect();
+            });
+        }
 
         /**
          * @return promis to wait for connection
