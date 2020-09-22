@@ -10,7 +10,8 @@ const debugColor = require('debug')('TuyAPI:device:color');
         id: '03200240600194781244',
         key: 'b8bdebab418f5b55',
         ip: '192.168.178.45',
-        version: "3.3" 
+        version: "3.3",
+        type: "<device_type>" <- "switch", "light", "dimmer", etc.  Attempts autodetect if not defined
     });
  */
 
@@ -63,7 +64,7 @@ var TuyaDevice = (function () {
             this.topicLevel = this.options.name.toLowerCase().replace(/ /g,"_");
         } else {
             this.topicLevel = this.options.id;
-        }
+        }        
 
         Object.defineProperty(this, 'device', {
             value: new TuyAPI(JSON.parse(JSON.stringify(this.options)))

@@ -6,26 +6,24 @@ const debug = require('debug')('TuyAPI:mqtt');
 const debugColor = require('debug')('TuyAPI:mqtt:color');
 const debugTuya = require('debug')('TuyAPI:mqtt:device');
 const debugError = require('debug')('TuyAPI:mqtt:error');
-var cleanup = require('./cleanup').Cleanup(onExit);
 
 var CONFIG = undefined;
 var mqtt_client = undefined;
 
-function bmap(istate) {
-    return istate ? 'ON' : "OFF";
-}
-
 /*
- * execute function on topic message
+ * Check if data is JSON or not
  */
-
-function IsJsonString(text) {
-    if (/^[\],:{}\s]*$/.test(text.replace(/\\["\\\/bfnrtu]/g, '@').replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']').replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
-        //the json is ok
-        return true;
+function isJsonString (data){
+    try {
+        const parsedData = JSON.parse(data);
+        if (parsedData && typeof parsedData === "object") {
+            return parsedData;
+        }
     }
+    catch (e) { }
+
     return false;
-}
+};
 
 /**
  * get command from mqtt message
@@ -36,13 +34,13 @@ function IsJsonString(text) {
 function getCommandFromMessage(_message) {
     let command = _message
 
-    if (command != "1" && command != "0" && IsJsonString(command)) {
+    if (command != "1" && command != "0" && isJsonString(command)) {
         debug("command is JSON");
         command = JSON.parse(command);
     } else {
         if (command.toLowerCase() != "toggle") {
             // convert simple commands (on, off, 1, 0) to TuyAPI-Commands
-            var convertString = command.toLowerCase() == "on" || command == "1" || command == 1 ? true : false;
+            const convertString = command.toLowerCase() == "on" || command == "1" || command == 1 ? true : false;
             command = {
                 set: convertString
             }
@@ -53,28 +51,76 @@ function getCommandFromMessage(_message) {
     return command;
 }
 
-/**
- * Publish current TuyaDevice state to MQTT-Topic
- * @param {TuyaDevice} device
- * @param {boolean} status
- */
-function publishStatus(device, status) {
-    if (mqtt_client.connected == true) {
-        try {
-            let topic = CONFIG.topic + device.topicLevel + "/state";
-            mqtt_client.publish(topic, status, {
-                retain: CONFIG.retain,
-                qos: CONFIG.qos
-            });
-            debugTuya("mqtt status updated to:" + topic + " -> " + status);
-        } catch (e) {
-            debugError(e);
+// Parse message
+function parseDpsMessage(message) {
+    if (typeof message === "boolean" ) {
+        return message;
+    } else if (message === "true" || message === "false") {
+        return (message === "true") ? true : false
+    } else if (!isNaN(message)) {
+        return Number(message)
+    } else {
+        return message
+    }
+}
+
+function publishMQTT(topic, data) {
+    mqtt_client.publish(topic, data, {
+        retain: CONFIG.retain,
+        qos: CONFIG.qos
+    });
+}
+
+function guessDeviceType(device, dps) {
+    keys = Object.keys(dps).length
+    if (keys === 2) {
+        if (typeof dps['1'] === "boolean" && dps['2'] >= 0 && dps['2'] <= 255) {
+            // A "dimmer" is a switch/light with brightness control only
+            device.options.type = "dimmer"
         }
+    } else if (keys === 1) {
+        if (typeof dps['1'] === "boolean") {
+            // If it only has one value and it's a boolean, it's probably a switch/socket
+            device.options.type = "switch"
+        }
+    }
+
+    if (!device.options.type) {
+        device.options.type = "unknown"
     }
 }
 
 function publishColorState(device, state) {
 
+}
+
+function publishDeviceTopics(device, dps) {
+    const baseTopic = CONFIG.topic + device.topicLevel
+    let state
+    let brightness_state
+    switch (device.options.type) {
+        case "switch":
+        case "unknown":
+            state = (dps['1']) ? 'ON' : 'OFF';
+            topic = baseTopic+"/state"
+            debugTuya("MQTT state ("+device.options.type+"): "+topic+" -> ", state);
+            publishMQTT(topic, state);
+            break;
+        case "dimmer":
+            if ('1' in dps) {
+                state = (dps['1']) ? 'ON' : 'OFF';
+                topic = baseTopic+"/state"
+                debugTuya("MQTT state ("+device.options.type+"): "+topic+" -> ", state);
+                publishMQTT(topic, state);
+            }
+            if ('2' in dps) {
+                brightness_state = JSON.stringify(dps['2']);
+                topic = baseTopic+"/brightness_state"
+                debugTuya("MQTT brightness ("+device.options.type+"): "+topic+" -> ", brightness_state);
+                publishMQTT(topic, brightness_state);
+            }
+            break;
+    }
 }
 
 /**
@@ -85,25 +131,28 @@ function publishColorState(device, state) {
 function publishDPS(device, dps) {
     if (mqtt_client.connected == true) {
         try {
+            if (!device.options.type) {
+                guessDeviceType(device, dps)
+            }
+
             const baseTopic = CONFIG.topic + device.topicLevel + "/dps";
-
-            const topic = baseTopic;
+            const topic = baseTopic + "/state"
             const data = JSON.stringify(dps);
-            debugTuya("mqtt dps updated to:" + topic + " -> ", data);
-            mqtt_client.publish(topic, data, {
-                retain: CONFIG.retain,
-                qos: CONFIG.qos
+
+            // Publish raw DPS JSON data
+            debugTuya("MQTT DPS JSON (raw): " + topic + " -> ", data);
+            publishMQTT(topic, data);
+
+            // Publish dps/<#>/state value for each DPS
+            Object.keys(dps).forEach(function (key) {
+                const topic = baseTopic + "/" + key + "/state";
+                const data = JSON.stringify(dps[key]);
+                debugTuya("MQTT DPS"+key+": "+topic+" -> ", data);
+                publishMQTT(topic, data);
             });
 
-            Object.keys(dps).forEach(function (key) {
-                const topic = baseTopic + "/" + key;
-                const data = JSON.stringify(dps[key]);
-                debugTuya("mqtt dps updated to:" + topic + " -> dps[" + key + "]", data);
-                mqtt_client.publish(topic, data, {
-                    retain: CONFIG.retain,
-                    qos: CONFIG.qos
-                });
-            });
+            publishDeviceTopics(device, dps)
+
         } catch (e) {
             debugError(e);
         }
@@ -118,10 +167,6 @@ TuyaDevice.onAll('data', function (data) {
     try {
         if (typeof data.dps != "undefined") {
             debugTuya('Data from device ' + this.tuyID + ' :', data);
-            var status = data.dps['1'];
-            if (typeof status != "undefined") {
-                publishStatus(this, bmap(status));
-            }
             publishDPS(this, data.dps);
         }
     } catch (e) {
@@ -225,56 +270,99 @@ const main = async() => {
     mqtt_client.on('message', function (topic, message) {
         try {
             message = message.toString();
-            splitTopic = topic.split("/");
-            let action = splitTopic[2];
-            let options = {
+            const splitTopic = topic.split("/");
+            const topicLength = splitTopic.length
+            const action = splitTopic[topicLength - 1];
+            const options = {
                 topicLevel: splitTopic[1]
             }
 
-            debug("receive settings", JSON.stringify({
-                topic: topic,
-                action: action,
-                message: message,
-                topicLevel: options.topicLevel
-            }));
+            // If it looks like a valid command topic try to process it
+            if (action.includes("command")) {
+                debug("Receive settings", JSON.stringify({
+                    topic: topic,
+                    action: action,
+                    message: message,
+                    topicLevel: options.topicLevel
+                }));
 
-            // Uses device topic level to find matching device
-            var device = new TuyaDevice(options);
+                // Uses device topic level to find matching device
+                var device = new TuyaDevice(options);
 
-            device.then(function (params) {
-                var device = params.device;
-                switch (action) {
-                    case "command":
-                        var command = getCommandFromMessage(message);
-                        debug("Received command: ", command);
-                        if (command == "toggle") {
-                            device.switch(command).then((data) => {
-                                debug("Set device status completed: ", data);
+                device.then(function (params) {
+                    var device = params.device;
+                    switch (action) {
+                        case "command":
+                            if (topicLength === 3) {
+                                const command = getCommandFromMessage(message);
+                                debug("Received command: ", command);
+                                if (command == "toggle") {
+                                    device.switch(command).then((data) => {
+                                        debug("Set device status completed: ", data);
+                                    });
+                                }
+                                if (command == "schema") {
+                                    // Trigger device schema update to update state
+                                    device.schema(command).then((data) => {
+                                    });
+                                    debug("Get schema status command complete");
+                                } else {
+                                    device.set(command).then((data) => {
+                                        debug("Set device status completed: ", data);
+                                    });
+                                }
+                            } else if (topicLength === 4) {
+                                if (isJsonString(message)) {
+                                    const command = getCommandFromMessage(message);
+                                    debug("Received command: ", command);
+                                    device.set(command).then((data) => {
+                                        debug("Set device status completed: ", data);
+                                    });
+                                } else {
+                                    debug("DPS command topic requires Tuya style JSON value")
+                                }
+                            } else if (topicLength === 5) {
+                                if (isJsonString(message)) {
+                                    debug("Individual DPS command topics require string value")
+                                } else {
+                                    const dpsMessage = parseDpsMessage(message)
+                                    debug("Received DPS "+splitTopic[topicLength-2]+" command: ", message);
+                                    const command = {
+                                        dps: splitTopic[topicLength-2],
+                                        set: dpsMessage
+                                    }
+                                    device.set(command).then((data) => {
+                                        debug("Set device status completed: ", data);
+                                    });
+                                }
+                            }
+                            break;
+                        case "color":
+                            const color = message.toLowerCase();
+                            debugColor("Set color: ", color);
+                            device.setColor(color).then((data) => {
+                                debug("Set device color completed: ", data);
                             });
-                        }
-                        if (command.schema === true) {
-                            // Trigger device schema update to update state
-                            device.schema(command).then((data) => {
-                            });
-                            debug("Get schema status command complete");
-                        } else {
-                            device.set(command).then((data) => {
-                                debug("Set device status completed: ", data);
-                            });
-                        }
-                        break;
-                    case "color":
-                        var color = message.toLowerCase();
-                        debugColor("Set color: ", color);
-                        device.setColor(color).then((data) => {
-                            debug("Set device color completed: ", data);
-                        });
-                        break;
-                }
-
-            }).catch((err) => {
-                debugError(err);
-            });
+                            break;
+                        case "brightness_command":
+                            if (message >= 0 && message <= 255) {
+                                const brightness = {
+                                    dps: 2,
+                                    set: parseInt(message)
+                                }
+                                debug("Set brighness: ", message)
+                                device.set(brightness).then((data) => {
+                                    debug("Set device brightness completed: ",data);
+                                });
+                            } else {
+                                debug("Received invalid brightness value: " + message)
+                            }
+                            break;
+                    }
+                }).catch((err) => {
+                    debugError(err);
+                });
+            }
         } catch (e) {
             debugError(e);
         }
