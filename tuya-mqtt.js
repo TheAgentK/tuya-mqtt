@@ -35,17 +35,22 @@ function getCommandFromMessage(_message) {
     let command = _message
 
     if (command != "1" && command != "0" && isJsonString(command)) {
-        debug("command is JSON");
+        debug("Received command is JSON");
         command = JSON.parse(command);
     } else {
-        if (command.toLowerCase() != "toggle") {
-            // convert simple commands (on, off, 1, 0) to TuyAPI-Commands
-            const convertString = command.toLowerCase() == "on" || command == "1" || command == 1 ? true : false;
-            command = {
-                set: convertString
-            }
-        } else {
-            command = command.toLowerCase();
+        switch(command.toLowerCase()) {
+            case "on":
+            case "off":
+            case "0":
+            case "1":
+                // convert simple commands (on, off, 1, 0) to TuyAPI-Commands
+                const convertString = command.toLowerCase() == "on" || command == "1" || command == 1 ? true : false;
+                command = {
+                    set: convertString
+                }
+                break;
+            default:
+                command = command.toLowerCase();
         }
     }
     return command;
@@ -77,16 +82,29 @@ function guessDeviceType(device, dps) {
         if (typeof dps['1'] === "boolean" && dps['2'] >= 0 && dps['2'] <= 255) {
             // A "dimmer" is a switch/light with brightness control only
             device.options.type = "dimmer"
+            device.options.template =
+                {
+                  "state": { "dpsKey": 1, "dpsType": "bool" },
+                  "brightness_state": { "dpsKey": 2, "dpsType": "int", "minVal": 0, "maxVal": 255 }
+                }
         }
     } else if (keys === 1) {
         if (typeof dps['1'] === "boolean") {
             // If it only has one value and it's a boolean, it's probably a switch/socket
             device.options.type = "switch"
+            device.options.template =
+            {
+                "state": { "dpsKey": 1, "dpsType": "bool" }
+            }
         }
     }
 
     if (!device.options.type) {
         device.options.type = "unknown"
+        device.options.template = 
+        {
+            "state": { "dpsKey": 1, "dpsType": "bool" }
+        }
     }
 }
 
@@ -95,31 +113,28 @@ function publishColorState(device, state) {
 }
 
 function publishDeviceTopics(device, dps) {
-    const baseTopic = CONFIG.topic + device.topicLevel
-    let state
-    let brightness_state
-    switch (device.options.type) {
-        case "switch":
-        case "unknown":
-            state = (dps['1']) ? 'ON' : 'OFF';
-            topic = baseTopic+"/state"
-            debugTuya("MQTT state ("+device.options.type+"): "+topic+" -> ", state);
+    if (!device.options.template) {
+        debugTuya ("No device template found!")
+        return 
+    }
+    const baseTopic = CONFIG.topic + device.topicLevel + "/"
+    for (let stateTopic in device.options.template) {
+        const template = device.options.template[stateTopic]
+        const topic = baseTopic + stateTopic
+        let state
+        switch (template.dpsType) {
+            case "bool":
+                state = (dps[template.dpsKey]) ? 'ON' : 'OFF';
+                break;
+            case "int":
+                state = (dps[template.dpsKey])
+                state = (state > template.minVal && state < template.maxVal) ? state.toString() : ""
+                break;
+        }
+        if (state) {
+            debugTuya("MQTT "+device.options.type+" "+topic+" -> ", state);
             publishMQTT(topic, state);
-            break;
-        case "dimmer":
-            if ('1' in dps) {
-                state = (dps['1']) ? 'ON' : 'OFF';
-                topic = baseTopic+"/state"
-                debugTuya("MQTT state ("+device.options.type+"): "+topic+" -> ", state);
-                publishMQTT(topic, state);
-            }
-            if ('2' in dps) {
-                brightness_state = JSON.stringify(dps['2']);
-                topic = baseTopic+"/brightness_state"
-                debugTuya("MQTT brightness ("+device.options.type+"): "+topic+" -> ", brightness_state);
-                publishMQTT(topic, brightness_state);
-            }
-            break;
+        }
     }
 }
 
@@ -166,7 +181,7 @@ function publishDPS(device, dps) {
 TuyaDevice.onAll('data', function (data) {
     try {
         if (typeof data.dps != "undefined") {
-            debugTuya('Data from device ' + this.tuyID + ' :', data);
+            debugTuya('Data from device Id ' + data.devId + ' ->', data.dps);
             publishDPS(this, data.dps);
         }
     } catch (e) {
@@ -187,7 +202,7 @@ function sleep(sec) {
 }
 
 function initTuyaDevices(tuyaDevices) {
-    for (const tuyaDevice of tuyaDevices) {
+    for (let tuyaDevice of tuyaDevices) {
         let options = {
             id: tuyaDevice.id,
             key: tuyaDevice.key
@@ -202,6 +217,100 @@ function initTuyaDevices(tuyaDevices) {
             }
         }
         new TuyaDevice(options);
+    }
+}
+
+// Process MQTT commands for all command topics at device level
+function processDeviceCommand(message, device, commandTopic) {
+    let command = getCommandFromMessage(message);
+    // If it's the color command topic handle it manually
+    if (commandTopic === "color_command") {
+        const color = message.toLowerCase();
+        debugColor("Set color: ", color);
+        device.setColor(color).then((data) => {
+            debug("Set device color completed: ", data);
+        });
+    } else if (commandTopic === "command" && (command === "toggle" || command === "schema" )) {
+        // Handle special commands "toggle" and "schema" to primary device command topic
+        debug("Received command: ", command);
+        switch(command) {
+            case "toggle":
+                device.switch(command).then((data) => {
+                    debug("Set device status completed: ", data);
+                });
+                break;
+            case "schema":
+                // Trigger device schema to update state
+                device.schema(command).then((data) => {
+                    debug("Get schema status command complete.");
+                });
+                break;
+            }
+    } else {
+        // Recevied command on device topic level, check for matching device template
+        // and process command accordingly
+        const stateTopic = commandTopic.replace("command", "state")
+        const template = device.options.template[stateTopic]
+        if (template) {
+            debug("Received device "+commandTopic.replace("_"," "), message);
+            const tuyaCommand = new Object()
+            tuyaCommand.dps = template.dpsKey
+            switch (template.dpsType) {
+                case "bool":
+                    if (command === "true") {
+                        tuyaCommand.set = true
+                    } else if (command === "false") {
+                        tuyaCommand.set = false
+                    } else if (typeof command.set === "boolean") {
+                        tuyaCommand.set = command.set
+                    } else {
+                        tuyaCommand.set = "!!!!!"
+                    }
+                    break;
+                case "int":
+                    tuyaCommand.set = (command > template.minVal && command < template.maxVal ) ? parseInt(command) : "!!!!!"
+                    break;
+            }
+            if (tuyaCommand.set === "!!!!!") {
+                debug("Received invalid value for ", commandTopic, ", value:", command)
+            } else {
+                device.set(tuyaCommand).then((data) => {
+                    debug("Set device "+commandTopic.replace("_"," ")+": ", data);
+                });
+            }
+        } else {
+            debug("Received unknown command topic for device: ", commandTopic)
+        }
+    }
+}
+
+// Process raw Tuya JSON commands via DPS command topic
+function processDpsCommand(message, device) {
+    if (isJsonString(message)) {
+        const command = getCommandFromMessage(message);
+        debug("Received command: ", command);
+        device.set(command).then((data) => {
+            debug("Set device status completed: ", data);
+        });
+    } else {
+        debug("DPS command topic requires Tuya style JSON value")
+    }
+}
+
+// Process text base Tuya command via DPS key command topics
+function processDpsKeyCommand(message, device, dpsKey) {
+    if (isJsonString(message)) {
+        debug("Individual DPS command topics do not accept JSON values")
+    } else {
+        const dpsMessage = parseDpsMessage(message)
+        debug("Received command for DPS"+dpsKey+": ", message);
+        const command = {
+            dps: dpsKey,
+            set: dpsMessage
+        }
+        device.set(command).then((data) => {
+            debug("Set device status completed: ", data);
+        });
     }
 }
 
@@ -272,91 +381,33 @@ const main = async() => {
             message = message.toString();
             const splitTopic = topic.split("/");
             const topicLength = splitTopic.length
-            const action = splitTopic[topicLength - 1];
+            const commandTopic = splitTopic[topicLength - 1];
             const options = {
                 topicLevel: splitTopic[1]
             }
 
             // If it looks like a valid command topic try to process it
-            if (action.includes("command")) {
+            if (commandTopic.includes("command")) {
                 debug("Receive settings", JSON.stringify({
                     topic: topic,
-                    action: action,
-                    message: message,
-                    topicLevel: options.topicLevel
+                    message: message
                 }));
 
                 // Uses device topic level to find matching device
                 var device = new TuyaDevice(options);
 
                 device.then(function (params) {
-                    var device = params.device;
-                    switch (action) {
-                        case "command":
-                            if (topicLength === 3) {
-                                const command = getCommandFromMessage(message);
-                                debug("Received command: ", command);
-                                if (command == "toggle") {
-                                    device.switch(command).then((data) => {
-                                        debug("Set device status completed: ", data);
-                                    });
-                                }
-                                if (command == "schema") {
-                                    // Trigger device schema update to update state
-                                    device.schema(command).then((data) => {
-                                    });
-                                    debug("Get schema status command complete");
-                                } else {
-                                    device.set(command).then((data) => {
-                                        debug("Set device status completed: ", data);
-                                    });
-                                }
-                            } else if (topicLength === 4) {
-                                if (isJsonString(message)) {
-                                    const command = getCommandFromMessage(message);
-                                    debug("Received command: ", command);
-                                    device.set(command).then((data) => {
-                                        debug("Set device status completed: ", data);
-                                    });
-                                } else {
-                                    debug("DPS command topic requires Tuya style JSON value")
-                                }
-                            } else if (topicLength === 5) {
-                                if (isJsonString(message)) {
-                                    debug("Individual DPS command topics require string value")
-                                } else {
-                                    const dpsMessage = parseDpsMessage(message)
-                                    debug("Received DPS "+splitTopic[topicLength-2]+" command: ", message);
-                                    const command = {
-                                        dps: splitTopic[topicLength-2],
-                                        set: dpsMessage
-                                    }
-                                    device.set(command).then((data) => {
-                                        debug("Set device status completed: ", data);
-                                    });
-                                }
-                            }
+                    let device = params.device;
+                    switch (topicLength) {
+                        case 3:
+                            processDeviceCommand(message, device, commandTopic);
                             break;
-                        case "color":
-                            const color = message.toLowerCase();
-                            debugColor("Set color: ", color);
-                            device.setColor(color).then((data) => {
-                                debug("Set device color completed: ", data);
-                            });
+                        case 4:
+                            processDpsCommand(message, device);
                             break;
-                        case "brightness_command":
-                            if (message >= 0 && message <= 255) {
-                                const brightness = {
-                                    dps: 2,
-                                    set: parseInt(message)
-                                }
-                                debug("Set brighness: ", message)
-                                device.set(brightness).then((data) => {
-                                    debug("Set device brightness completed: ",data);
-                                });
-                            } else {
-                                debug("Received invalid brightness value: " + message)
-                            }
+                        case 5:
+                            const dpsKey = splitTopic[topicLength-2]
+                            processDpsKeyCommand(message, device, dpsKey);
                             break;
                     }
                 }).catch((err) => {
