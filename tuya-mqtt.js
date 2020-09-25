@@ -123,7 +123,7 @@ function publishDeviceTopics(device, dps) {
         const topic = baseTopic + stateTopic
         let state
         // Only publish state updates for DPS values included in device data
-        if (dps.hasOwnProperty('dpsKey')) {
+        if (dps.hasOwnProperty(template.dpsType)) {
             switch (template.dpsType) {
                 case "bool":
                     state = (dps[template.dpsKey]) ? 'ON' : 'OFF';
