@@ -122,18 +122,21 @@ function publishDeviceTopics(device, dps) {
         const template = device.options.template[stateTopic]
         const topic = baseTopic + stateTopic
         let state
-        switch (template.dpsType) {
-            case "bool":
-                state = (dps[template.dpsKey]) ? 'ON' : 'OFF';
-                break;
-            case "int":
-                state = (dps[template.dpsKey])
-                state = (state > template.minVal && state < template.maxVal) ? state.toString() : ""
-                break;
-        }
-        if (state) {
-            debugTuya("MQTT "+device.options.type+" "+topic+" -> ", state);
-            publishMQTT(topic, state);
+        // Only publish state updates for DPS values included in device data
+        if (dps.hasOwnProperty('dpsKey')) {
+            switch (template.dpsType) {
+                case "bool":
+                    state = (dps[template.dpsKey]) ? 'ON' : 'OFF';
+                    break;
+                case "int":
+                    state = (dps[template.dpsKey])
+                    state = (state > template.minVal && state < template.maxVal) ? state.toString() : ""
+                    break;
+            }
+            if (state) {
+                debugTuya("MQTT "+device.options.type+" "+topic+" -> ", state);
+                publishMQTT(topic, state);
+            }
         }
     }
 }
