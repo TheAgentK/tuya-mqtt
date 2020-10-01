@@ -1,4 +1,4 @@
-# tuyAPI-MQTT Client
+# tuya-mqtt
 MQTT interface for Tuya home automation devices sold under various names.
 This is a wrapper script for the Project codetheweb/tuyapi. https://github.com/codetheweb/tuyapi
 
