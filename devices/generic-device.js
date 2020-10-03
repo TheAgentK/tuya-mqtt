@@ -10,7 +10,6 @@ class GenericDevice extends TuyaDevice {
         if (this.config.hasOwnProperty('template')) {
             // Map generic DPS topics to device specific topic names
             this.deviceTopics = this.config.template
-            console.log(this.deviceTopics)
         } else {
             // Try to get schema to at least know what DPS keys to get initial update
             const result = await this.device.get({"schema": true})
