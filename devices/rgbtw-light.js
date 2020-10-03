@@ -15,6 +15,8 @@ class RGBTWLight extends TuyaDevice {
 
         this.deviceData.mdl = 'RGBTW Light'
 
+        this.isRgbtwLight = true
+
         // Map generic DPS topics to device specific topic names
         this.deviceTopics = {
             state: {

@@ -33,10 +33,13 @@ class TuyaDevice {
             mf: 'Tuya'
         }
 
-        // Variables to hold device state data
+        // Property to hold device state data
         this.dps = {}      // Current dps state data for device
         this.dpsPub = {}   // Published dps state data for device
-        this.color = {'h': 0, 's': 0, 'b': 0, 't': 0, 'w': 0} // Current color values (Hue, Saturation, Brightness, White Temp, White Level)
+        this.color = {'h': 0, 's': 0, 'b': 0} // HSB color value cache
+
+        // Property to hold friendly topics template
+        this.deviceTopics = {}
 
         // Build the MQTT topic for this device (friendly name or device id)
         if (this.options.name) {
@@ -158,7 +161,7 @@ class TuyaDevice {
                 break;
             case 'hsb':
                 if (this.dps[key]) {
-                    state = this.getColorState(this.dps[key], topic)
+                    state = this.convertFromTuyaHsbColor(this.dps[key], topic)
                 }
                 break;
             case 'str':
@@ -305,80 +308,87 @@ class TuyaDevice {
                 }
                 break;
             case 'hsb':
-                tuyaCommand.set = this.getColorCommand(command, deviceTopic)
-                this.setLightMode(deviceTopic)
+                tuyaCommand.set = this.convertToTuyaHsbColor(command, deviceTopic)
                 break;
         }
         if (tuyaCommand.set === '!!!INVALID!!!') {
             return false
         } else {
-            if (this.config.dpsWhiteValue === deviceTopic.key) {
-                this.setLightMode(deviceTopic)
+            if (this.isRgbtwLight) {
+                this.setLight(deviceTopic, tuyaCommand)
+            } else {
+                this.set(tuyaCommand)
             }
-            this.set(tuyaCommand)
             return true
         }
     }
     
-    // Takes the current Tuya color and splits it into component parts
+    // Takes the current Tuya color and splits it into HSB component parts
     // Updates cached color state for device and returns decimal format
-    // comma delimeted string of components for selected topic
-    getColorState(value, topic) {
+    // comma delimeted string of components for selected friendly topic
+    convertFromTuyaHsbColor(value, topic) {
+        // Split Tuya HSB value into component parts
         const [, h, s, b] = (value || '000003e803e8').match(/^([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})$/i) || [0, '0', '3e8', '3e8'];
+
+        // Convert from Hex to Decimal and cache values
         this.color.h = parseInt(h, 16)
         this.color.s = Math.round(parseInt(s, 16) / 10)
         this.color.b = parseInt(b, 16)
+
+        // Return comma separate array of component values for specific topic
         const color = new Array()
         const components = this.deviceTopics[topic].components.split(',')
-
         for (let i in components) {
-            if (components.hasOwnProperty([components[i]])) {
-                color.push(decimalColor[components[i]])
-            }
+            color.push(this.color[components[i]])
         }
         return (color.join(',')) 
     }
 
-    // Takes provided decimal HSB components from MQTT topic, combine with existing 
-    // settings for unchanged values since brightness is sometimes sent separately
-    // Convert to Tuya hex format and return value
-    getColorCommand(value, topic) {
-        const [, h, s, b] = (this.dps[topic.key] || '000003e803e8').match(/^([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})$/i) || [0, '0', '3e8', '3e8'];
-        const decimalColor = {
-            h: parseInt(h, 16),
-            s: Math.round(parseInt(s, 16) / 10),
-            b: parseInt(b, 16)
-        }
+    // Takes provided decimal HSB components from MQTT topic, combines with cached 
+    // unchanged values since, for example, brightness is sometimes sent separately
+    // then convers to Tuya hex format and returns value
+    convertToTuyaHsbColor(value, topic) {
+        // Start with cached color values
+        const newColor = this.color
+
+        // Update any HSB component with a changed value
         const components = topic.components.split(',')
         const values = value.split(',')
         for (let i in components) {
-            decimalColor[components[i]] = Math.round(values[i])
+            newColor[components[i]] = Math.round(values[i])
         }
-        const hexColor = decimalColor.h.toString(16).padStart(4, '0') + (10 * decimalColor.s).toString(16).padStart(4, '0') + (decimalColor.b).toString(16).padStart(4, '0')
+
+        // Convert new HSB color to Tuya style HSB format
+        const hexColor = newColor.h.toString(16).padStart(4, '0') + (10 * newColor.s).toString(16).padStart(4, '0') + (newColor.b).toString(16).padStart(4, '0')
         return hexColor
     }
 
-    // Set light mode based on received command
-    async setLightMode(topic) {
-        const currentMode = this.dps[this.config.dpsMode]
-        let targetMode
-
+    // Set light based on received command
+    async setLight(topic, command) {
+        let targetMode = undefined
         if (this.config.dpsWhiteValue === topic.key) {
-            // If setting white level, switch to white mode
+            // If setting white level, or saturation = 0, target is white mode
             targetMode = 'white'
         } else if (this.config.dpsColor === topic.key) {
-            // If setting an HSB value, switch to colour mode
-            targetMode = 'colour'
+            // Split Tuya HSB value into component parts
+            const [, h, s, b] = (command.set || '000003e803e8').match(/^([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})$/i) || [0, '0', '3e8', '3e8'];
+            if (s > 0) {
+                // If setting an HSB value, switch to colour mode
+                targetMode = 'colour'
+            } else {
+                targetMode = 'white'
+            }
         }
 
         // Set the correct light mode
-        if (targetMode && targetMode !== currentMode) {
+        if (targetMode) {
             const tuyaCommand = {
                 dps: this.config.dpsMode,
                 set: targetMode
             }
             await this.set(tuyaCommand)
         }
+        this.set(command)
     }
 
     // Simple function to help debug output 
@@ -387,10 +397,9 @@ class TuyaDevice {
     }
 
     set(command) {
-        debug('Set device '+this.options.id+' -> '+command)
+        debug('Set device '+this.options.id+' -> '+JSON.stringify(command))
         return new Promise((resolve, reject) => {
             this.device.set(command).then((result) => {
-                debug(result)
                 resolve(result)
             })
         })
