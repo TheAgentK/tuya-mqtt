@@ -33,8 +33,10 @@ class TuyaDevice {
             mf: 'Tuya'
         }
 
-        this.dps = {}      // This will hold dps state data for device
-        this.prevDps = {}  // This will hold previous dps value for device to avoid republish of non-changed states
+        // Variables to hold device state data
+        this.dps = {}      // Current dps state data for device
+        this.dpsPub = {}   // Published dps state data for device
+        this.color = {h, s, b, t, w} // Current color values (Hue, Saturation, Brightness, White Temp, White Level)
 
         // Build the MQTT topic for this device (friendly name or device id)
         if (this.options.name) {
@@ -135,7 +137,7 @@ class TuyaDevice {
             let setResult = this.setState(command, deviceTopic)
             if (!setResult) {
                 debug('Command topic '+this.baseTopic+commandTopic+' received invalid value: '+command)
-            }    
+            }
         } else {
             debug('Invalid command topic '+this.baseTopic+commandTopic+' for device: '+this.config.name)
             return
