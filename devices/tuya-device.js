@@ -33,10 +33,11 @@ class TuyaDevice {
             mf: 'Tuya'
         }
 
-        // Property to hold device state data
-        this.dps = {}      // Current dps state data for device
-        this.dpsPub = {}   // Published dps state data for device
-        this.color = {'h': 0, 's': 0, 'b': 0} // HSB color value cache
+        // Objects to hold cached device state data
+        this.state = {
+            "dps": {},
+            "color": {'h': 0, 's': 0, 'b': 0}
+        }
 
         // Property to hold friendly topics template
         this.deviceTopics = {}
@@ -57,7 +58,7 @@ class TuyaDevice {
                 debug('Data from device not encrypted:', data.replace(/[^a-zA-Z0-9 ]/g, ''))
             } else {
                 debug('Data from device '+this.options.id+' ->', data.dps)
-                this.updateDpsData(data)
+                this.updateState(data)
             }
         })
 
@@ -91,19 +92,21 @@ class TuyaDevice {
     }
 
     // Update dps properties with device data updates
-    updateDpsData(data) {
-        try {
-            if (typeof data.dps != 'undefined') {
-                // Update device dps values
-                for (let key in data.dps) {
-                    this.dps[key] = data.dps[key]
+    updateState(data) {
+        if (typeof data.dps != 'undefined') {
+            // Update cached device state data
+            for (let key in data.dps) {
+                this.state.dps[key] = {
+                    'val': data.dps[key],
+                    'updated': true
                 }
-                if (this.connected) {
-                    this.publishTopics()
+                if (this.config.dpsColor && this.config.dpsColor == key) {
+                    this.updateColorState(data.dps[key])
                 }
             }
-        } catch (e) {
-            debugError(e);
+            if (this.connected) {
+                this.publishTopics()
+            }
         }
     }
 
@@ -114,8 +117,12 @@ class TuyaDevice {
 
         // Loop through and publish all device specific topics
         for (let topic in this.deviceTopics) {
-            const state = this.getTopicState(topic)
-            this.publishMqtt(this.baseTopic + topic, state, true)
+            const deviceTopic = this.deviceTopics[topic]
+            const key = deviceTopic.key
+            if (this.state.dps[key].updated) {
+                const state = this.getTopicState(deviceTopic, this.state.dps[key].val)
+                this.publishMqtt(this.baseTopic + topic, state, true)
+            }
         }
 
         // Publish Generic Dps Topics
@@ -125,47 +132,57 @@ class TuyaDevice {
     // Publish all dps-values to topic
     publishDpsTopics() {
         try {
-            const dpsTopic = this.baseTopic + 'dps'
+            if (!Object.keys(this.state.dps).length) { return }
 
+            const dpsTopic = this.baseTopic + 'dps'
             // Publish DPS JSON data if not empty
-            if (Object.keys(this.dps).length) {
-                const data = JSON.stringify(this.dps)
-                const dpsStateTopic = dpsTopic + '/state'
-                debugMqtt('MQTT DPS JSON: ' + dpsStateTopic + ' -> ', data)
-                this.publishMqtt(dpsStateTopic, data, false)
+            let data = {}
+            for (let key in this.state.dps) {
+                if (this.state.dps[key].updated) {
+                    data[key] = this.state.dps[key].val
+                }
             }
+            data = JSON.stringify(data)
+            const dpsStateTopic = dpsTopic + '/state'
+            debugMqtt('MQTT DPS JSON: ' + dpsStateTopic + ' -> ', data)
+            this.publishMqtt(dpsStateTopic, data, false)
 
             // Publish dps/<#>/state value for each device DPS
-            for (let key in this.dps) {
-                const dpsKeyTopic = dpsTopic + '/' + key + '/state'
-                const data = this.dps.hasOwnProperty(key) ? this.dps[key].toString() : 'None'
-                debugMqtt('MQTT DPS'+key+': '+dpsKeyTopic+' -> ', data)
-                this.publishMqtt(dpsKeyTopic, data, false)
+            for (let key in this.state.dps) {
+                if (this.state.dps[key].updated) {
+                    const dpsKeyTopic = dpsTopic + '/' + key + '/state'
+                    const data = this.state.dps.hasOwnProperty(key) ? this.state.dps[key].val.toString() : 'None'
+                    debugMqtt('MQTT DPS'+key+': '+dpsKeyTopic+' -> ', data)
+                    this.publishMqtt(dpsKeyTopic, data, false)
+                    this.state.dps[key].updated = false
+                }
             }
         } catch (e) {
             debugError(e);
         }
     }
     
-    // Get the friedly topic state based on DPS value type
-    getTopicState(topic) {
-        const deviceTopic = this.deviceTopics[topic]
-        const key = deviceTopic.key
-        let state = null
+    // Get the friendly topic state based on DPS value type
+    getTopicState(deviceTopic, value) {
+        let state
         switch (deviceTopic.type) {
             case 'bool':
-                state = this.dps[key] ? 'ON' : 'OFF'
+                state = value ? 'ON' : 'OFF'
                 break;
             case 'int':
-                state = this.dps[key] ? this.dps[key].toString() : 'None'
+                state = value ? value.toString() : 'None'
                 break;
             case 'hsb':
-                if (this.dps[key]) {
-                    state = this.convertFromTuyaHsbColor(this.dps[key], topic)
+                // Return comma separate array of component values for specific topic
+                state = new Array()
+                const components = deviceTopic.components.split(',')
+                for (let i in components) {
+                    state.push(this.state.color[components[i]])
                 }
+                state = (state.join(','))
                 break;
             case 'str':
-                state = this.dps[key] ? this.dps[key] : ''
+                state = value ? value : ''
         }
         return state
     }
@@ -203,28 +220,27 @@ class TuyaDevice {
     }
 
     // Converts message to TuyAPI JSON commands
-    getCommandFromMessage(_message) {
-        let command = _message
+    getCommandFromMessage(message) {
+        let command
 
-        if (command != '1' && command != '0' && utils.isJsonString(command)) {
+        if (message != '1' && message != '0' && utils.isJsonString(message)) {
             debugMqtt('MQTT message is JSON')
-            command = JSON.parse(command);
+            command = JSON.parse(message);
         } else {
-            switch(command.toLowerCase()) {
+            switch(message.toLowerCase()) {
                 case 'on':
                 case 'off':
                 case '0':
                 case '1':
                 case 'true':
                 case 'false':
-                    // convert simple commands (on, off, 1, 0) to TuyAPI-Commands
-                    const convertString = command.toLowerCase() === 'on' || command === '1' || command === 'true' || command === 1 ? true : false
+                    // convert simple messages (on, off, 1, 0) to TuyAPI commands
                     command = {
-                        set: convertString
+                        set: (message.toLowerCase() === 'on' || message === '1' || message === 'true' || message === 1) ? true : false
                     }
                     break;
                 default:
-                    command = command.toLowerCase()
+                    command = message.toLowerCase()
             }
         }
         return command
@@ -289,7 +305,7 @@ class TuyaDevice {
         switch (deviceTopic.type) {
             case 'bool':
                 if (command === 'toggle') {
-                    tuyaCommand.set = !this.dps[tuyaCommand.dps]
+                    tuyaCommand.set = !this.state.dps[tuyaCommand.dps].val
                 } else {
                     if (typeof command.set === 'boolean') {
                         tuyaCommand.set = command.set
@@ -323,33 +339,26 @@ class TuyaDevice {
         }
     }
     
-    // Takes the current Tuya color and splits it into HSB component parts
-    // Updates cached color state for device and returns decimal format
-    // comma delimeted string of components for selected friendly topic
-    convertFromTuyaHsbColor(value, topic) {
-        // Split Tuya HSB value into component parts
-        const [, h, s, b] = (value || '000003e803e8').match(/^([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})$/i) || [0, '0', '3e8', '3e8'];
-
-        // Convert from Hex to Decimal and cache values
-        this.color.h = parseInt(h, 16)
-        this.color.s = Math.round(parseInt(s, 16) / 10)
-        this.color.b = parseInt(b, 16)
-
-        // Return comma separate array of component values for specific topic
-        const color = new Array()
-        const components = this.deviceTopics[topic].components.split(',')
-        for (let i in components) {
-            color.push(this.color[components[i]])
+    // Takes Tuya color value in HSB or HSBHEX format and updates
+    // cached device HSB color state
+    updateColorState(value) {
+        let h, s, b
+        if (this.config.colorType === 'hsbhex') {
+            [, h, s, b] = (value || '0000000000ffff').match(/^.{6}([0-9a-f]{4})([0-9a-f]{2})([0-9a-f]{2})$/i) || [0, '0', 'ff', 'ff'];
+        } else {
+            [, h, s, b] = (value || '000003e803e8').match(/^([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})$/i) || [0, '0', '3e8', '3e8']
         }
-        return (color.join(',')) 
+        // Convert from Hex to Decimal and cache values
+        this.state.color.h = parseInt(h, 16)
+        this.state.color.s = Math.round(parseInt(s, 16) / 10)
+        this.state.color.b = parseInt(b, 16)        
     }
 
-    // Takes provided decimal HSB components from MQTT topic, combines with cached 
-    // unchanged values since, for example, brightness is sometimes sent separately
-    // then convers to Tuya hex format and returns value
+    // Takes provided decimal HSB components from MQTT topic, combines with any
+    // cached (unchanged) component values and converts to Tuya HSB format
     convertToTuyaHsbColor(value, topic) {
         // Start with cached color values
-        const newColor = this.color
+        const newColor = this.state.color
 
         // Update any HSB component with a changed value
         const components = topic.components.split(',')
@@ -363,30 +372,29 @@ class TuyaDevice {
         return hexColor
     }
 
-    // Set light based on received command
+    // Set white/colour mode based on target mode
     async setLight(topic, command) {
         let targetMode = undefined
         if (this.config.dpsWhiteValue === topic.key) {
-            // If setting white level, or saturation = 0, target is white mode
+            // If setting white level, light should be in white mode
             targetMode = 'white'
         } else if (this.config.dpsColor === topic.key) {
-            // Split Tuya HSB value into component parts
-            const [, h, s, b] = (command.set || '000003e803e8').match(/^([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})$/i) || [0, '0', '3e8', '3e8'];
-            if (s > 0) {
-                // If setting an HSB value, switch to colour mode
+            if (this.state.color.s > 0) {
+                // If setting an HSB value with saturation > 0, light should be in color mode
                 targetMode = 'colour'
             } else {
+                // If setting an HSB value but saturation is 0, put light in white mode
                 targetMode = 'white'
             }
         }
 
         // Set the correct light mode
-        if (targetMode) {
-            const tuyaCommand = {
+        if (targetMode && targetMode !== this.state.dps[this.config.dpsMode].val) {
+            const modeCommand = {
                 dps: this.config.dpsMode,
                 set: targetMode
             }
-            await this.set(tuyaCommand)
+            await this.set(modeCommand)
         }
         this.set(command)
     }
