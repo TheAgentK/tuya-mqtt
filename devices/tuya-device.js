@@ -190,7 +190,7 @@ class TuyaDevice {
     // Process MQTT commands for all command topics at device level
     async processCommand(message, commandTopic) {
         const command = this.getCommandFromMessage(message)
-        if (commandTopic === 'command' && command === 'get-states' ) {
+        if (commandTopic === 'command' && command === 'get-states') {
             // Handle "get-states" command to update device state
             debug('Received command: ', command)
             await this.getStates()
@@ -324,7 +324,10 @@ class TuyaDevice {
                 }
                 break;
             case 'hsb':
-                tuyaCommand.set = this.convertToTuyaHsbColor(command, deviceTopic)
+                tuyaCommand.set = this.convertToTuyaHsbColor(command, deviceTopic.components)
+                break;
+            case 'hsbhex':
+                tuyaCommand.set = this.convertToTuyaHsbHexColor(command, deviceTopic.components)
                 break;
         }
         if (tuyaCommand.set === '!!!INVALID!!!') {
@@ -340,28 +343,31 @@ class TuyaDevice {
     }
     
     // Takes Tuya color value in HSB or HSBHEX format and updates
-    // cached device HSB color state
+    // cached HSB color state for device
     updateColorState(value) {
         let h, s, b
         if (this.config.colorType === 'hsbhex') {
             [, h, s, b] = (value || '0000000000ffff').match(/^.{6}([0-9a-f]{4})([0-9a-f]{2})([0-9a-f]{2})$/i) || [0, '0', 'ff', 'ff'];
+            this.state.color.h = parseInt(h, 16)
+            this.state.color.s = Math.round(parseInt(s, 16) / 2.55)  // Convert saturation to 100 scale
+            this.state.color.b = Math.round(parseInt(b, 16) / .255) // Convert brightness to 1000 scale
         } else {
             [, h, s, b] = (value || '000003e803e8').match(/^([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})$/i) || [0, '0', '3e8', '3e8']
+            // Convert from Hex to Decimal and cache values
+            this.state.color.h = parseInt(h, 16)
+            this.state.color.s = Math.round(parseInt(s, 16) / 10)   // Convert saturation to 100 Scale
+            this.state.color.b = parseInt(b, 16)                    // Convert brightness to 1000 scale
         }
-        // Convert from Hex to Decimal and cache values
-        this.state.color.h = parseInt(h, 16)
-        this.state.color.s = Math.round(parseInt(s, 16) / 10)
-        this.state.color.b = parseInt(b, 16)        
     }
 
     // Takes provided decimal HSB components from MQTT topic, combines with any
     // cached (unchanged) component values and converts to Tuya HSB format
-    convertToTuyaHsbColor(value, topic) {
+    convertToTuyaHsbColor(value, components) {
         // Start with cached color values
         const newColor = this.state.color
 
         // Update any HSB component with a changed value
-        const components = topic.components.split(',')
+        components = components.split(',')
         const values = value.split(',')
         for (let i in components) {
             newColor[components[i]] = Math.round(values[i])
@@ -370,6 +376,48 @@ class TuyaDevice {
         // Convert new HSB color to Tuya style HSB format
         const hexColor = newColor.h.toString(16).padStart(4, '0') + (10 * newColor.s).toString(16).padStart(4, '0') + (newColor.b).toString(16).padStart(4, '0')
         return hexColor
+    }
+
+    convertToTuyaHsbHexColor(value, components) {
+        // Start with cached color values
+        const newColor = this.state.color
+
+        // Update any HSB component with a changed value
+        components = components.split(',')
+        const values = value.split(',')
+        for (let i in components) {
+            newColor[components[i]] = Math.round(values[i])
+        }
+        let {h, s, b} = newColor
+        const hsb = h.toString(16).padStart(4, '0') + Math.round(2.55 * s).toString(16).padStart(2, '0') + Math.round(b * .255).toString(16).padStart(2, '0');
+        h /= 60;
+        s /= 100;
+        b *= .255;
+        const
+            i = Math.floor(h),
+            f = h - i,
+            p = b * (1 - s),
+            q = b * (1 - s * f),
+            t = b * (1 - s * (1 - f)),
+            rgb = (() => {
+                switch (i % 6) {
+                    case 0:
+                        return [b, t, p];
+                    case 1:
+                        return [q, b, p];
+                    case 2:
+                        return [p, b, t];
+                    case 3:
+                        return [p, q, b];
+                    case 4:
+                        return [t, p, b];
+                    case 5:
+                        return [b, p, q];
+                }
+            })().map(c => Math.round(c).toString(16).padStart(2, '0')),
+            hex = rgb.join('');
+
+        return hex + hsb;
     }
 
     // Set white/colour mode based on target mode
