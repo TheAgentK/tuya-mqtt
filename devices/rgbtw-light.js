@@ -26,7 +26,7 @@ class RGBTWLight extends TuyaDevice {
             white_value_state: { 
                 key: this.config.dpsWhiteValue,
                 type: 'int',
-                min: (this.config.whiteValueScale = 1000) ? 10 : 1,
+                min: (this.config.whiteValueScale == 1000) ? 10 : 1,
                 max: this.config.whiteValueScale,
                 scale: this.config.whiteValueScale
             },
@@ -39,6 +39,11 @@ class RGBTWLight extends TuyaDevice {
                 key: this.config.dpsColor,
                 type: this.config.colorType,
                 components: 'b'
+            },
+            hsb_state: {
+                key: this.config.dpsColor,
+                type: this.config.colorType,
+                components: 'h,s,b'
             },
             mode_state: {
                 key: this.config.dpsMode,

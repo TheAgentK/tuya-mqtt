@@ -211,7 +211,7 @@ class TuyaDevice {
         const deviceTopic = this.deviceTopics.hasOwnProperty(stateTopic) ? this.deviceTopics[stateTopic] : ''
 
         if (deviceTopic) {
-            debug('Device '+this.options.id+' recieved command topic: '+commandTopic+', message: '+message)
+            debug('Device '+this.options.id+' received command topic: '+commandTopic+', message: '+message)
             const command = this.getCommandFromMessage(message)
             let setResult = this.setTuyaState(command, deviceTopic)
             if (!setResult) {
@@ -324,12 +324,12 @@ class TuyaDevice {
                     tuyaCommand.set = '!!!INVALID!!!'
                 } else if (deviceTopic.hasOwnProperty('min') && deviceTopic.hasOwnProperty('max')) {
                     if (command >= deviceTopic.min && command <= deviceTopic.max ) {
-                        tuyaCommand.set = deviceTopic.type = 'int' ? parseInt(command) : parseFloat(command)
+                        tuyaCommand.set = deviceTopic.type === 'int' ? parseInt(command) : parseFloat(command)
                     } else {
                         tuyaCommand.set = '!!!INVALID!!!'
                     }
                 } else {
-                    tuyaCommand.set = deviceTopic.type = 'int' ? parseInt(command) : parseFloat(command)
+                    tuyaCommand.set = deviceTopic.type === 'int' ? parseInt(command) : parseFloat(command)
                 }
                 break;
             case 'hsb':
@@ -373,7 +373,11 @@ class TuyaDevice {
         // Initialize the set color values for first time.  Used to conflicts 
         // when mulitple HSB components are updated in quick succession
         if (!this.state.setColor) {
-            this.state.setColor = this.state.color
+            this.state.setColor = {
+                'h': this.state.color.h,
+                's': this.state.color.s,
+                'b': this.state.color.b
+            }
         }
     }
 
@@ -433,28 +437,33 @@ class TuyaDevice {
 
     // Set white/colour mode based on target mode
     async setLight(topic, command) {
+        const currentMode = this.state.dps[this.config.dpsMode].val
         let targetMode = undefined
-        if (this.config.dpsWhiteValue === topic.key) {
+        if (topic.key === this.config.dpsWhiteValue) {
             // If setting white level, light should be in white mode
             targetMode = 'white'
-        } else if (this.config.dpsColor === topic.key) {
-            if (this.state.setColor.s > 0) {
-                // If setting an HSB value with saturation > 0, light should be in color mode
-                targetMode = 'colour'
-            } else {
-                // If setting an HSB value but saturation is 0, put light in white mode
+        } else if (topic.key === this.config.dpsColor) {
+            if (this.state.setColor.s === 0 && this.state.setColor.s !== this.state.color.s) {
+                // If setting saturation to 0 and not already zero, target mode is 'white'
                 targetMode = 'white'
+            } else if ((this.state.setColor.s > 0 && this.state.setColor.s !== this.state.color.s) || 
+                        this.state.setColor.h !== this.state.color.h || 
+                        this.state.setColor.b !== this.state.color.b) {
+                // If setting saturation > 0, or changing any other color value, target mode is 'colour'
+                targetMode = 'colour'
             }
         }
-
-        // Set the correct light mode
-        if (targetMode && targetMode !== this.state.dps[this.config.dpsMode].val) {
-            const modeCommand = {
-                dps: this.config.dpsMode,
-                set: targetMode
+        // If mode change required, add it to the set command
+        if (targetMode && currentMode !== targetMode) {
+            command = {
+                multiple: true,
+                data: {
+                    [command.dps]: command.set,
+                    [this.config.dpsMode]: targetMode
+                }
             }
-            await this.set(modeCommand)
         }
+        console.log(command)
         this.set(command)
     }
 
