@@ -463,7 +463,6 @@ class TuyaDevice {
                 }
             }
         }
-        console.log(command)
         this.set(command)
     }
 
