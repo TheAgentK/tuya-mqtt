@@ -54,11 +54,13 @@ class TuyaDevice {
 
         // Listen for device data and call update DPS function if valid
         this.device.on('data', (data) => {
-            if (typeof data == 'string') {
-                debug('Data from device not encrypted:', data.replace(/[^a-zA-Z0-9 ]/g, ''))
-            } else {
-                debug('Data from device '+this.options.id+' ->', data.dps)
+            if (typeof data === 'object') {
+                debug('Received JSON data from device '+this.options.id+' ->', data.dps)
                 this.updateState(data)
+            } else {
+                if (data !== 'json obj data unvalid') {
+                    debug('Received string data from device '+this.options.id+' ->', data.replace(/[^a-zA-Z0-9 ]/g, ''))
+                }
             }
         })
 
@@ -173,7 +175,7 @@ class TuyaDevice {
                 break;
             case 'int':
             case 'float':
-                state = value ? value.toString() : ''
+                state = this.parseStateNumber(value, deviceTopic)
                 break;
             case 'hsb':
             case 'hsbhex':
@@ -189,6 +191,34 @@ class TuyaDevice {
                 state = value ? value : ''
         }
         return state
+    }
+
+    // Parse the received state value based on deviceTopic config
+    parseStateNumber(value, deviceTopic) {
+        // Check if it's a number and it's not outside of defined range
+        if (isNaN(value)) {
+            return ''
+        }
+
+        // Perform any required math transforms before returing command value
+        switch (deviceTopic.type) {
+            case 'int':
+                if (deviceTopic.stateMath) {
+                    value = parseInt(Math.round(eval(value+deviceTopic.stateMath)))
+                } else {
+                    value = parseInt(value)
+                }
+                break;
+            case 'float':
+                if (deviceTopic.stateMath) {
+                    value = parseFloat(eval(value+deviceTopic.stateMath))
+                } else {
+                    value = parseFloat(value)
+                }
+                break;
+            }
+
+        return value.toString()
     }
     
     // Process MQTT commands for all command topics at device level
@@ -213,8 +243,8 @@ class TuyaDevice {
         if (deviceTopic) {
             debug('Device '+this.options.id+' received command topic: '+commandTopic+', message: '+message)
             const command = this.getCommandFromMessage(message)
-            let setResult = this.setTuyaState(command, deviceTopic)
-            if (!setResult) {
+            let commandResult = this.sendTuyaCommand(command, deviceTopic)
+            if (!commandResult) {
                 debug('Command topic '+this.baseTopic+commandTopic+' received invalid value: '+command)
             }
         } else {
@@ -303,7 +333,7 @@ class TuyaDevice {
     }
 
     // Set state based on command topic
-    setTuyaState(command, deviceTopic) {
+    sendTuyaCommand(command, deviceTopic) {
         const tuyaCommand = new Object()
         tuyaCommand.dps = deviceTopic.key
         switch (deviceTopic.type) {
@@ -320,17 +350,7 @@ class TuyaDevice {
                 break;
             case 'int':
             case 'float':
-                if (isNaN(command)) {
-                    tuyaCommand.set = '!!!INVALID!!!'
-                } else if (deviceTopic.hasOwnProperty('min') && deviceTopic.hasOwnProperty('max')) {
-                    if (command >= deviceTopic.min && command <= deviceTopic.max ) {
-                        tuyaCommand.set = deviceTopic.type === 'int' ? parseInt(command) : parseFloat(command)
-                    } else {
-                        tuyaCommand.set = '!!!INVALID!!!'
-                    }
-                } else {
-                    tuyaCommand.set = deviceTopic.type === 'int' ? parseInt(command) : parseFloat(command)
-                }
+                tuyaCommand.set = this.parseCommandNumber(command, deviceTopic)
                 break;
             case 'hsb':
                 this.updateSetColorState(command, deviceTopic.components)
@@ -353,6 +373,40 @@ class TuyaDevice {
         }
     }
     
+    // Validate/transform set interger values 
+    parseCommandNumber(command, deviceTopic) {
+        let value = undefined
+        const invalid = '!!!INVALID!!!'
+
+        // Check if it's a number and it's not outside of defined range
+        if (isNaN(command)) {
+            return invalid
+        } else if ((deviceTopic.hasOwnProperty('min') && command < deviceTopic.min) ||
+                  (deviceTopic.hasOwnProperty('max') && command > deviceTopic.max)) {
+            return invalid
+        }
+
+        // Perform any required math transforms before returing command value
+        switch (deviceTopic.type) {
+            case 'int':
+                if (deviceTopic.commandMath) {
+                    value = parseInt(Math.round(eval(command+deviceTopic.commandMath)))
+                } else {
+                    value = parseInt(command)
+                }
+                break;
+            case 'float':
+                if (deviceTopic.commandMath) {
+                    value = parseFloat(eval(command+deviceTopic.commandMath))
+                } else {
+                    value = parseFloat(command)
+                }
+                break;
+            }
+
+        return value
+    }
+
     // Takes Tuya color value in HSB or HSBHEX format and
     // updates cached HSB color state for device
     updateColorState(value) {
@@ -360,14 +414,14 @@ class TuyaDevice {
         if (this.config.colorType === 'hsbhex') {
             [, h, s, b] = (value || '0000000000ffff').match(/^.{6}([0-9a-f]{4})([0-9a-f]{2})([0-9a-f]{2})$/i) || [0, '0', 'ff', 'ff'];
             this.state.color.h = parseInt(h, 16)
-            this.state.color.s = Math.round(parseInt(s, 16) / 2.55)  // Convert saturation to 100 scale
-            this.state.color.b = Math.round(parseInt(b, 16) / .255) // Convert brightness to 1000 scale
+            this.state.color.s = Math.round(parseInt(s, 16) / 2.55) // Convert saturation to 100 scale
+            this.state.color.b = Math.round(parseInt(b, 16) / 2.55) // Convert brightness to 100 scale
         } else {
             [, h, s, b] = (value || '000003e803e8').match(/^([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})$/i) || [0, '0', '3e8', '3e8']
             // Convert from Hex to Decimal and cache values
             this.state.color.h = parseInt(h, 16)
             this.state.color.s = Math.round(parseInt(s, 16) / 10)   // Convert saturation to 100 Scale
-            this.state.color.b = parseInt(b, 16)                    // Convert brightness to 1000 scale
+            this.state.color.b = Math.round(parseInt(b, 16) / 10)   // Convert brightness to 1000 scale
         }
 
         // Initialize the set color values for first time.  Used to conflicts 
@@ -397,17 +451,17 @@ class TuyaDevice {
     getTuyaHsbColor() {
         // Convert new HSB color to Tuya style HSB format
         let {h, s, b} = this.state.setColor
-        const hexColor = h.toString(16).padStart(4, '0') + (10 * s).toString(16).padStart(4, '0') + (b).toString(16).padStart(4, '0')
+        const hexColor = h.toString(16).padStart(4, '0') + (10 * s).toString(16).padStart(4, '0') + (10 * b).toString(16).padStart(4, '0')
         return hexColor
     }
 
     // Returns Tuya HSBHEX format value from current setColor HSB value
     getTuyaHsbHexColor() {
         let {h, s, b} = this.state.setColor
-        const hsb = h.toString(16).padStart(4, '0') + Math.round(2.55 * s).toString(16).padStart(2, '0') + Math.round(b * .255).toString(16).padStart(2, '0');
+        const hsb = h.toString(16).padStart(4, '0') + Math.round(2.55 * s).toString(16).padStart(2, '0') + Math.round(2.55 * b).toString(16).padStart(2, '0');
         h /= 60;
         s /= 100;
-        b *= .255;
+        b *= 2.55;
         const
             i = Math.floor(h),
             f = h - i,
@@ -435,21 +489,19 @@ class TuyaDevice {
         return hex + hsb;
     }
 
-    // Set white/colour mode based on target mode
+    // Set white/colour mode based on 
     async setLight(topic, command) {
         const currentMode = this.state.dps[this.config.dpsMode].val
         let targetMode = undefined
-        if (topic.key === this.config.dpsWhiteValue) {
-            // If setting white level, light should be in white mode
+        if (topic.key === this.config.dpsWhiteValue || topic.key === this.config.dpsColorTemp) {
+            // If setting white level or color temperature, light should be in white mode
             targetMode = 'white'
         } else if (topic.key === this.config.dpsColor) {
-            if (this.state.setColor.s === 0 && this.state.setColor.s !== this.state.color.s) {
-                // If setting saturation to 0 and not already zero, target mode is 'white'
+            if (this.state.setColor.s < 10) {
+                // If saturation is < 10 then white mode
                 targetMode = 'white'
-            } else if ((this.state.setColor.s > 0 && this.state.setColor.s !== this.state.color.s) || 
-                        this.state.setColor.h !== this.state.color.h || 
-                        this.state.setColor.b !== this.state.color.b) {
-                // If setting saturation > 0, or changing any other color value, target mode is 'colour'
+            } else {
+                // If saturation > 0 and changing hue, set color mode
                 targetMode = 'colour'
             }
         }
