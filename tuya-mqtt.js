@@ -2,7 +2,8 @@
 const fs = require('fs')
 const mqtt = require('mqtt')
 const json5 = require('json5')
-const debug = require('debug')('tuya-mqtt:mqtt')
+const debug = require('debug')('tuya-mqtt:info')
+const debugCommand = require('debug')('tuya-mqtt:command')
 const debugError = require('debug')('tuya-mqtt:error')
 const SimpleSwitch = require('./devices/simple-switch')
 const SimpleDimmer = require('./devices/simple-dimmer')
@@ -28,23 +29,14 @@ function getDevice(configDevice, mqttClient) {
         case 'RGBTWLight':
             return new RGBTWLight(deviceInfo)
             break;
-        case 'GenericDevice':
-            return new GenericDevice(deviceInfo)
-            break;
     }
-    return null
+    return new GenericDevice(deviceInfo)
 }
 
 function initDevices(configDevices, mqttClient) {
     for (let configDevice of configDevices) {
-        if (!configDevice.type) {
-            debug('Device type not specified, skipping creation of this device')
-        } else {
-            const newDevice = getDevice(configDevice, mqttClient)
-            if (newDevice) {
-                tuyaDevices.push(newDevice)
-            }
-        }
+        const newDevice = getDevice(configDevice, mqttClient)
+        tuyaDevices.push(newDevice)
     }
 }
 
@@ -62,7 +54,7 @@ const main = async() => {
     }
 
     if (typeof CONFIG.qos == 'undefined') {
-        CONFIG.qos = 2
+        CONFIG.qos = 1
     }
     if (typeof CONFIG.retain == 'undefined') {
         CONFIG.retain = false
@@ -121,7 +113,7 @@ const main = async() => {
 
             // If it looks like a valid command topic try to process it
             if (commandTopic.includes('command')) {
-                debug('Received MQTT message -> ', JSON.stringify({
+                debugCommand('Received MQTT message -> ', JSON.stringify({
                     topic: topic,
                     message: message
                 }))

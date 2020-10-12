@@ -1,5 +1,6 @@
 const TuyaDevice = require('./tuya-device')
-const debug = require('debug')('tuya-mqtt:tuya')
+const debug = require('debug')('tuya-mqtt:device-detect')
+const debugDiscovery = require('debug')('tuya-mqtt:discovery')
 const utils = require('../lib/utils')
 
 class RGBTWLight extends TuyaDevice {
@@ -12,9 +13,11 @@ class RGBTWLight extends TuyaDevice {
         this.config.dpsWhiteValue = this.config.dpsWhiteValue ? this.config.dpsWhiteValue : this.guess.dpsWhiteValue
         this.config.whiteValueScale = this.config.whiteValueScale ? this.config.whiteValueScale : this.guess.whiteValueScale
         this.config.dpsColorTemp = this.config.dpsColorTemp ? this.config.dpsColorTemp : this.guess.dpsColorTemp
+        this.config.minColorTemp = this.config.minColorTemp ? this.config.minColorTemp : 165
+        this.config.maxColorTemp = this.config.maxColorTemp ? this.config.maxColorTemp : 375
+        this.config.colorTempScale = this.config.colorTempScale ? this.config.colorTempScale : this.guess.colorTempScale
         this.config.dpsColor = this.config.dpsColor ? this.config.dpsColor : this.guess.dpsColor
         this.config.colorType = this.config.colorType ? this.config.colorType : this.guess.colorType
-        this.config.colorType = 'hsb'
 
         this.deviceData.mdl = 'RGBTW Light'
 
@@ -32,8 +35,8 @@ class RGBTWLight extends TuyaDevice {
                 min: 1,
                 max: 100,
                 scale: this.config.whiteValueScale,
-                stateMath: (this.config.whiteValueScale == 1000) ? '/10' : '/2.55',
-                commandMath: (this.config.whiteValueScale == 1000) ? '*10' : '*2.55'
+                stateMath: '/('+this.config.whiteValueScale+'/100)',
+                commandMath: '*('+this.config.whiteValueScale+'/100)'
             },
             hs_state: {
                 key: this.config.dpsColor,
@@ -53,6 +56,23 @@ class RGBTWLight extends TuyaDevice {
             mode_state: {
                 key: this.config.dpsMode,
                 type: 'str'
+            }
+        }
+
+        // If device supports Color Temperature add color temp device topic
+        if (this.config.dpsColorTemp) {
+            // Values used for tranform
+            const rangeFactor = (this.config.maxColorTemp-this.config.minColorTemp)/100
+            const scaleFactor = this.config.colorTempScale/100
+            const tuyaMaxColorTemp = this.config.maxColorTemp/rangeFactor*scaleFactor
+
+            this.deviceTopics.color_temp_state = {
+                key: this.config.dpsColorTemp,
+                type: 'int',
+                min: this.config.minColorTemp,
+                max: this.config.maxColorTemp,
+                stateMath: '/'+scaleFactor+'*-'+rangeFactor+'+'+this.config.maxColorTemp,
+                commandMath: '/'+rangeFactor+'*-'+scaleFactor+'+'+tuyaMaxColorTemp
             }
         }
 
@@ -83,44 +103,46 @@ class RGBTWLight extends TuyaDevice {
             device: this.deviceData
         }
 
-        debug('Home Assistant config topic: '+configTopic)
-        debug(discoveryData)
+        if (this.config.dpsColorTemp) {
+            discoveryData.color_temp_state_topic = this.baseTopic+'color_temp_state'
+            discoveryData.color_temp_command_topic = this.baseTopic+'color_temp_command'
+            discoveryData.min_mireds = this.config.minColorTemp
+            discoveryData.max_mireds = this.config.maxColorTemp
+        }
+
+        debugDiscovery('Home Assistant config topic: '+configTopic)
+        debugDiscovery(discoveryData)
         this.publishMqtt(configTopic, JSON.stringify(discoveryData))
     }
 
     async guessLightInfo() {
         this.guess = new Object()
+        debug('Attempting to detect light capabilites and DPS values...')
+        debug('Querying DPS 2 for white/color mode setting...')
         let mode = await this.device.get({"dps": 2})
-        if (mode && (mode === 'white' || mode === 'colour')) {
-            this.guess.dpsPower = 1
-            this.guess.dpsMode = 2
-            this.guess.dpsWhiteValue = 3
-            this.guess.whiteValueScale = 255
-            const colorTemp = await this.device.get({"dps": 4})
-            if (colorTemp) { 
-                this.guess.dpsColorTemp = 4
-            } else {
-                this.guess.dpsColorTemp = 0
-            }
-            this.guess.dpsColor = 5
-            const color = await this.device.get({"dps": this.guess.dpsColor})
-            this.guess.colorType = (color && color.length === 14) ? 'hsbhex' : 'hsb'
+        if (mode && (mode === 'white' || mode === 'colour' || mode.toString().includes('scene'))) {
+            debug('Detected probably Tuya color bulb at DPS 1-5, checking more details...')
+            this.guess = {'dpsPower': 1, 'dpsMode': 2, 'dpsWhiteValue': 3, 'whiteValueScale': 255, 'dpsColorTemp': 4, 'colorTempScale': 255, 'dpsColor': 5}
         } else {
-            mode = await this.device.get({"dps": 20})
-            this.guess.dpsPower = 20
-            this.guess.dpsMode = 21
-            this.guess.dpsWhiteValue = 22
-            this.guess.whiteValueScale = 1000
-            const colorTemp = await this.device.get({"dps": 23})
-            if (colorTemp) { 
-                this.guess.dpsColorTemp = 23
+                debug('Detected likely Tuya color bulb at DPS 20-24, checking more details...')
+                this.guess = {'dpsPower': 20, 'dpsMode': 21, 'dpsWhiteValue': 22, 'whiteValueScale': 1000, 'dpsColorTemp': 23, 'colorTempScale': 1000, 'dpsColor': 24}
+        }
+        if (this.guess.dpsPower) {
+            debug('Attempting to detect if bulb supports color temperature...')
+            const colorTemp = await this.device.get({"dps": this.guess.dpsColorTemp})
+            if (colorTemp !== '' && colorTemp >= 0 && colorTemp <= this.guess.colorTempScale) {
+                debug('Detected likely color temerature support')
             } else {
+                debug('No color temperature support detected')
                 this.guess.dpsColorTemp = 0
             }
-            this.guess.dpsColor = 24
+            debug('Attempting to detect Tuya color format used by device...')
             const color = await this.device.get({"dps": this.guess.dpsColor})
             this.guess.colorType = (color && color.length === 12) ? 'hsb' : 'hsbhex'
-        }
+            debug ('Detected Tuya color format '+this.guess.colorType.toUpperCase())
+        } else {
+            debug('No Tuya color bulb detected, if this device is definitely a Tuya bulb please manually specify settings.')
+        } 
     }
 }
 

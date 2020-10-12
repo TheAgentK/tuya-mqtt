@@ -1,5 +1,6 @@
 const TuyaDevice = require('./tuya-device')
-const debug = require('debug')('tuya-mqtt:tuya')
+const debug = require('debug')('tuya-mqtt:device')
+const debugDiscovery = require('debug')('tuya-mqtt:discovery')
 const utils = require('../lib/utils')
 
 class SimpleSwitch extends TuyaDevice {
@@ -36,8 +37,8 @@ class SimpleSwitch extends TuyaDevice {
             device: this.deviceData
         }
 
-        debug('Home Assistant config topic: '+configTopic)
-        debug(discoveryData)
+        debugDiscovery('Home Assistant config topic: '+configTopic)
+        debugDiscovery(discoveryData)
         this.publishMqtt(configTopic, JSON.stringify(discoveryData))
     }
 }
