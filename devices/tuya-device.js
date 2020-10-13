@@ -106,6 +106,25 @@ class TuyaDevice {
         })
     }
 
+    // Get and update state of all dps properties for device
+    async getStates() {
+        // Suppress topic updates while syncing state
+        this.connected = false
+        for (let topic in this.deviceTopics) {
+            const key = this.deviceTopics[topic].key
+            try {
+                const result = await this.device.get({"dps": key})
+                this.state.dps[key].val = result
+                this.state.dps[key].updated = true
+            } catch {
+                debugError('Could not get value for device DPS key '+key)
+            }
+        }
+        this.connected = true
+        // Force topic update now that all states are fully in sync
+        this.publishTopics()
+    }
+
     // Update cached DPS states on data updates
     updateState(data) {
         if (typeof data.dps != 'undefined') {
@@ -188,7 +207,7 @@ class TuyaDevice {
                 break;
             case 'int':
             case 'float':
-                state = this.parseStateNumber(value, deviceTopic)
+                state = this.parseNumberState(value, deviceTopic)
                 break;
             case 'hsb':
             case 'hsbhex':
@@ -207,7 +226,7 @@ class TuyaDevice {
     }
 
     // Parse the received state numeric value based on deviceTopic rules
-    parseStateNumber(value, deviceTopic) {
+    parseNumberState(value, deviceTopic) {
         // Check if it's a number and it's not outside of defined range
         if (isNaN(value)) {
             return ''
@@ -216,18 +235,10 @@ class TuyaDevice {
         // Perform any required math transforms before returing command value
         switch (deviceTopic.type) {
             case 'int':
-                if (deviceTopic.stateMath) {
-                    value = parseInt(Math.round(evaluate(value+deviceTopic.stateMath)))
-                } else {
-                    value = parseInt(value)
-                }
+                value = (deviceTopic.stateMath) ? parseInt(Math.round(evaluate(value+deviceTopic.stateMath))) : value = parseInt(value)
                 break;
             case 'float':
-                if (deviceTopic.stateMath) {
-                    value = parseFloat(evaluate(value+deviceTopic.stateMath))
-                } else {
-                    value = parseFloat(value)
-                }
+                value = (deviceTopic.stateMath) ? parseFloat(evaluate(value+deviceTopic.stateMath)) : value = parseFloat(value)
                 break;
             }
 
@@ -236,69 +247,49 @@ class TuyaDevice {
     
     // Process MQTT commands for all command topics at device level
     processCommand(message, commandTopic) {
-        const command = this.getCommandFromMessage(message)
+        let command
+        if (utils.isJsonString(message)) {
+            debugCommand('Received MQTT command message is a JSON string')
+            command = JSON.parse(message);
+        } else {
+            debugCommand('Received MQTT command message is a text string')
+            command = message.toLowerCase()
+        }
+
         if (commandTopic === 'command' && command === 'get-states') {
             // Handle "get-states" command to update device state
             debugCommand('Received command: ', command)
             this.getStates()
         } else {
             // Call device specific command topic handler
-            this.processDeviceCommand(message, commandTopic) 
+            this.processDeviceCommand(command, commandTopic) 
         }
     }   
 
     // Process MQTT commands for all command topics at device level
-    processDeviceCommand(message, commandTopic) {
+    processDeviceCommand(command, commandTopic) {
         // Determine state topic from command topic to find proper template
         const stateTopic = commandTopic.replace('command', 'state')
         const deviceTopic = this.deviceTopics.hasOwnProperty(stateTopic) ? this.deviceTopics[stateTopic] : ''
 
         if (deviceTopic) {
-            debugCommand('Device '+this.options.id+' received command topic: '+commandTopic+', message: '+message)
-            const command = this.getCommandFromMessage(message)
+            debugCommand('Device '+this.options.id+' received command topic: '+commandTopic+', message: '+command)
             let commandResult = this.sendTuyaCommand(command, deviceTopic)
             if (!commandResult) {
                 debugCommand('Command topic '+this.baseTopic+commandTopic+' received invalid value: '+command)
             }
         } else {
-            debugCommand('Invalid command topic '+this.baseTopic+commandTopic+' for device: '+this.config.name)
+            debugCommand('Invalid command topic '+this.baseTopic+commandTopic+' for device id: '+this.config.id)
             return
         }
     }
-
-    // Converts message to TuyAPI JSON commands
-    getCommandFromMessage(message) {
-        let command
-
-        if (message != '1' && message != '0' && utils.isJsonString(message)) {
-            debugCommand('MQTT message is JSON')
-            command = JSON.parse(message);
-        } else {
-            switch(message.toLowerCase()) {
-                case 'on':
-                case 'off':
-                case '0':
-                case '1':
-                case 'true':
-                case 'false':
-                    // convert simple messages (on, off, 1, 0) to TuyAPI commands
-                    command = {
-                        set: (message.toLowerCase() === 'on' || message === '1' || message === 'true' || message === 1) ? true : false
-                    }
-                    break;
-                default:
-                    command = message.toLowerCase()
-            }
-        }
-        return command
-    }
-
+    
     // Process Tuya JSON commands via DPS command topic
     processDpsCommand(message) {
         if (utils.isJsonString(message)) {
-            const tuyaCommand = this.getCommandFromMessage(message)
-            debugCommand('Received command: '+tuyaCommand)
-            this.set(tuyaCommand)
+            const command = JSON.parse(message)
+            debugCommand('Parsed Tuya JSON command: '+JSON.stringify(command))
+            this.set(command)
         } else {
             debugCommand('DPS command topic requires Tuya style JSON value')
         }
@@ -311,11 +302,11 @@ class TuyaDevice {
         } else {
             const dpsMessage = this.parseDpsMessage(message)
             debugCommand('Received command for DPS'+dpsKey+': ', message)
-            const tuyaCommand = {
+            const command = {
                 dps: dpsKey,
                 set: dpsMessage
             }
-            this.set(tuyaCommand)
+            this.set(command)
         }
     }
 
@@ -332,27 +323,9 @@ class TuyaDevice {
         }
     }
 
-    // Get and update state of all dps properties for device
-    async getStates() {
-        // Suppress topic updates while syncing state
-        this.connected = false
-        for (let topic in this.deviceTopics) {
-            const key = this.deviceTopics[topic].key
-            try {
-                const result = await this.device.get({"dps": key})
-                this.state.dps[key].val = result
-                this.state.dps[key].updated = true
-            } catch {
-                debugError('Could not get value for device DPS key '+key)
-            }
-        }
-        this.connected = true
-        // Force topic update now that all states are fully in sync
-        this.publishTopics()
-    }
-
     // Set state based on command topic
-    sendTuyaCommand(command, deviceTopic) {
+    sendTuyaCommand(message, deviceTopic) {
+        let command = message.toLowerCase()
         const tuyaCommand = new Object()
         tuyaCommand.dps = deviceTopic.key
         switch (deviceTopic.type) {
@@ -360,6 +333,7 @@ class TuyaDevice {
                 if (command === 'toggle') {
                     tuyaCommand.set = !this.state.dps[tuyaCommand.dps].val
                 } else {
+                    command = this.parseBoolCommand(command)
                     if (typeof command.set === 'boolean') {
                         tuyaCommand.set = command.set
                     } else {
@@ -369,16 +343,19 @@ class TuyaDevice {
                 break;
             case 'int':
             case 'float':
-                tuyaCommand.set = this.parseCommandNumber(command, deviceTopic)
+                tuyaCommand.set = this.parseNumberCommand(command, deviceTopic)
                 break;
             case 'hsb':
                 this.updateSetColorState(command, deviceTopic.components)
-                tuyaCommand.set = this.getTuyaHsbColor()
+                tuyaCommand.set = this.parseTuyaHsbColor()
                 break;
             case 'hsbhex':
                 this.updateSetColorState(command, deviceTopic.components)
-                tuyaCommand.set = this.getTuyaHsbHexColor()
+                tuyaCommand.set = this.parseTuyaHsbHexColor()
                 break;
+            default:
+                // If type is not one of the above just use the raw string as is
+                tuyaCommand.set = message
         }
         if (tuyaCommand.set === '!!!INVALID!!!') {
             return false
@@ -391,18 +368,40 @@ class TuyaDevice {
             return true
         }
     }
-    
+
+    // Convert simple bool commands to true/flase
+    parseBoolCommand(command) {
+        switch(command) {
+            case 'on':
+            case 'off':
+            case '0':
+            case '1':
+            case 'true':
+            case 'false':
+                return {
+                    set: (command === 'on' || command === '1' || command === 'true' || command === 1) ? true : false
+                }
+            default:
+                return command
+        }
+    }
+
     // Validate/transform set interger values 
-    parseCommandNumber(command, deviceTopic) {
+    parseNumberCommand(command, deviceTopic) {
         let value = undefined
         const invalid = '!!!INVALID!!!'
 
         // Check if it's a number and it's not outside of defined range
         if (isNaN(command)) {
             return invalid
-        } else if ((deviceTopic.hasOwnProperty('min') && command < deviceTopic.min) ||
-                  (deviceTopic.hasOwnProperty('max') && command > deviceTopic.max)) {
-            return invalid
+        } else if (deviceTopic.hasOwnProperty('min') && command < deviceTopic.min) {
+            debugError('Received command value "'+command+'" that is less than the configured minimum value')
+            debugError('Overriding command with minimum value '+deviceTopic.min)
+            command = deviceTopic.min
+        } else if (deviceTopic.hasOwnProperty('max') && command > deviceTopic.max) {
+            debugError('Received command value "'+command+'" that is greater than the configured maximum value')
+            debugError('Overriding command with maximum value: '+deviceTopic.max)
+            command = deviceTopic.max
         }
 
         // Perform any required math transforms before returing command value
@@ -445,7 +444,7 @@ class TuyaDevice {
 
         // Initialize the set color values for first time.  Used to conflicts 
         // when mulitple HSB components are updated in quick succession
-        if (!this.state.setColor) {
+        if (!this.state.hasOwnProperty('setColor')) {
             this.state.setColor = {
                 'h': this.state.color.h,
                 's': this.state.color.s,
@@ -467,7 +466,7 @@ class TuyaDevice {
     }
 
     // Returns Tuya HSB format value from current setColor HSB value
-    getTuyaHsbColor() {
+    parseTuyaHsbColor() {
         // Convert new HSB color to Tuya style HSB format
         let {h, s, b} = this.state.setColor
         const hexColor = h.toString(16).padStart(4, '0') + (10 * s).toString(16).padStart(4, '0') + (10 * b).toString(16).padStart(4, '0')
@@ -475,7 +474,7 @@ class TuyaDevice {
     }
 
     // Returns Tuya HSBHEX format value from current setColor HSB value
-    getTuyaHsbHexColor() {
+    parseTuyaHsbHexColor() {
         let {h, s, b} = this.state.setColor
         const hsb = h.toString(16).padStart(4, '0') + Math.round(2.55 * s).toString(16).padStart(2, '0') + Math.round(2.55 * b).toString(16).padStart(2, '0');
         h /= 60;
@@ -518,8 +517,6 @@ class TuyaDevice {
             // If setting white level or color temperature, light should be in white mode
             targetMode = 'white'
         } else if (topic.key === this.config.dpsColor) {
-            // Short sleep for cases where mulitple updates occur quickly
-            await msSleep(100)
             if (this.state.setColor.s < 10) {
                 // If saturation is < 10 then white mode
                 targetMode = 'white'
