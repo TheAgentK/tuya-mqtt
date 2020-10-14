@@ -106,9 +106,9 @@ class TuyaDevice {
         })
     }
 
-    // Get and update state of all dps properties for device
+    // Get and update cached values of all configured/known dps value for device
     async getStates() {
-        // Suppress topic updates while syncing state
+        // Suppress topic updates while syncing device state with cached state
         this.connected = false
         for (let topic in this.deviceTopics) {
             const key = this.deviceTopics[topic].key
@@ -121,21 +121,30 @@ class TuyaDevice {
             }
         }
         this.connected = true
-        // Force topic update now that all states are fully in sync
+        // Force topic update now that all states are fully syncronized
         this.publishTopics()
     }
 
-    // Update cached DPS states on data updates
+    // Update cached DPS values on data updates
     updateState(data) {
         if (typeof data.dps != 'undefined') {
             // Update cached device state data
             for (let key in data.dps) {
-                this.state.dps[key] = {
-                    'val': data.dps[key],
-                    'updated': true
+                // Only update if the received value is different from previous value
+                if (this.state.dps[key] !== data.dps[key]) {
+                    this.state.dps[key] = {
+                        'val': data.dps[key],
+                        'updated': true
+                    }
                 }
-                if (this.config.dpsColor && this.config.dpsColor == key) {
-                    this.updateColorState(data.dps[key])
+                if (this.isRgbtwLight) {
+                    if (this.config.hasOwnProperty('dpsColor') && this.config.dpsColor == key) {
+                        this.updateColorState(data.dps[key])
+                    } else if (this.config.hasOwnProperty('dpsMode') && this.config.dpsMode == key) {
+                        // If color/white mode is changing, force sending color state
+                        // Allows overriding saturation value to 0% for white mode for the HSB device topics
+                        this.state.dps[this.config.dpsColor].updated = true
+                    }
                 }
             }
             if (this.connected) {
@@ -153,6 +162,7 @@ class TuyaDevice {
         for (let topic in this.deviceTopics) {
             const deviceTopic = this.deviceTopics[topic]
             const key = deviceTopic.key
+            // Only publish values if different from previous value
             if (this.state.dps[key] && this.state.dps[key].updated) {
                 const state = this.getTopicState(deviceTopic, this.state.dps[key].val)
                 if (state) { 
@@ -174,6 +184,7 @@ class TuyaDevice {
             // Publish DPS JSON data if not empty
             let data = {}
             for (let key in this.state.dps) {
+                // Only publish values if different from previous value
                 if (this.state.dps[key].updated) {
                     data[key] = this.state.dps[key].val
                 }
@@ -185,6 +196,7 @@ class TuyaDevice {
 
             // Publish dps/<#>/state value for each device DPS
             for (let key in this.state.dps) {
+                // Only publish values if different from previous value
                 if (this.state.dps[key].updated) {
                     const dpsKeyTopic = dpsTopic + '/' + key + '/state'
                     const data = this.state.dps.hasOwnProperty(key) ? this.state.dps[key].val.toString() : 'None'
@@ -198,7 +210,7 @@ class TuyaDevice {
         }
     }
     
-    // Get the friendly topic state based on DPS value type
+    // Get the friendly topic state based on configured DPS value type
     getTopicState(deviceTopic, value) {
         let state
         switch (deviceTopic.type) {
@@ -215,12 +227,14 @@ class TuyaDevice {
                 state = new Array()
                 const components = deviceTopic.components.split(',')
                 for (let i in components) {
-                    state.push(this.state.color[components[i]])
+                    // If light is in white mode always report saturation 0%, otherwise report actual value
+                    state.push((components[i] === 's' && this.state.dps[this.config.dpsMode].val === 'white') ? 0 : this.state.color[components[i]])
                 }
                 state = (state.join(','))
                 break;
             case 'str':
                 state = value ? value : ''
+                break;
         }
         return state
     }
@@ -245,7 +259,7 @@ class TuyaDevice {
         return value.toString()
     }
     
-    // Process MQTT commands for all command topics at device level
+    // Initial processing of MQTT commands for all command topics
     processCommand(message, commandTopic) {
         let command
         if (utils.isJsonString(message)) {
@@ -256,6 +270,7 @@ class TuyaDevice {
             command = message.toLowerCase()
         }
 
+        // If get-states command, then updates all states and re-publish topics
         if (commandTopic === 'command' && command === 'get-states') {
             // Handle "get-states" command to update device state
             debugCommand('Received command: ', command)
@@ -266,7 +281,7 @@ class TuyaDevice {
         }
     }   
 
-    // Process MQTT commands for all command topics at device level
+    // Process MQTT commands for all device command topics
     processDeviceCommand(command, commandTopic) {
         // Determine state topic from command topic to find proper template
         const stateTopic = commandTopic.replace('command', 'state')
@@ -295,7 +310,7 @@ class TuyaDevice {
         }
     }
 
-    // Process text base Tuya command via DPS key command topics
+    // Process text based Tuya commands via DPS key command topics
     processDpsKeyCommand(message, dpsKey) {
         if (utils.isJsonString(message)) {
             debugCommand('Individual DPS command topics do not accept JSON values')
@@ -369,7 +384,7 @@ class TuyaDevice {
         }
     }
 
-    // Convert simple bool commands to true/flase
+    // Convert simple bool commands to true/false
     parseBoolCommand(command) {
         switch(command) {
             case 'on':
@@ -425,8 +440,8 @@ class TuyaDevice {
         return value
     }
 
-    // Takes Tuya color value in HSB or HSBHEX format and
-    // updates cached HSB color state for device
+    // Takes Tuya color value in HSB or HSBHEX format and updates cached HSB color state for device
+    // Credit homebridge-tuya project for HSB/HSBHEX conversion code
     updateColorState(value) {
         let h, s, b
         if (this.config.colorType === 'hsbhex') {
@@ -466,6 +481,7 @@ class TuyaDevice {
     }
 
     // Returns Tuya HSB format value from current setColor HSB value
+    // Credit homebridge-tuya project for HSB conversion code
     parseTuyaHsbColor() {
         // Convert new HSB color to Tuya style HSB format
         let {h, s, b} = this.state.setColor
@@ -474,6 +490,7 @@ class TuyaDevice {
     }
 
     // Returns Tuya HSBHEX format value from current setColor HSB value
+    // Credit homebridge-tuya project for HSBHEX conversion code
     parseTuyaHsbHexColor() {
         let {h, s, b} = this.state.setColor
         const hsb = h.toString(16).padStart(4, '0') + Math.round(2.55 * s).toString(16).padStart(2, '0') + Math.round(2.55 * b).toString(16).padStart(2, '0');
@@ -526,10 +543,10 @@ class TuyaDevice {
             }
         }
 
-        // Set the proper value
+        // Send the issued command
         this.set(command)
 
-        // Put the bulb in the correct mode
+        // Make sure the bulb stays in the correct mode
         if (targetMode) {
             command = {
                 dps: this.config.dpsMode,
@@ -553,6 +570,7 @@ class TuyaDevice {
         })
     }
 
+    // Search for and connect to device
     connectDevice() {
         // Find device on network
         debug('Search for device id '+this.options.id)
@@ -576,12 +594,7 @@ class TuyaDevice {
         debugError('Error connecting to device id '+this.options.id+'...retry in 10 seconds.')
         await utils.sleep(10)
         if (this.connected) { return }
-        debug('Search for device id '+this.options.id)
-        this.device.find().then(() => {
-            debug('Found device id '+this.options.id)
-            // Attempt connection to device
-            this.device.connect()
-        })
+        this.connectDevice()
     }
     
     // Simple function to monitor heartbeats to determine if 
