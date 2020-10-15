@@ -1,7 +1,6 @@
 const TuyAPI = require('tuyapi')
 const { evaluate } = require('mathjs')
 const utils = require('../lib/utils')
-const { msSleep } = require('../lib/utils')
 const debug = require('debug')('tuya-mqtt:tuyapi')
 const debugState = require('debug')('tuya-mqtt:state')
 const debugCommand = require('debug')('tuya-mqtt:command')

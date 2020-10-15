@@ -33,6 +33,9 @@ class SimpleSwitch extends TuyaDevice {
             name: (this.config.name) ? this.config.name : this.config.id,
             state_topic: this.baseTopic+'state',
             command_topic: this.baseTopic+'command',
+            availability_topic: this.baseTopic+'status',
+            payload_available: 'online',
+            payload_not_available: 'offline',
             unique_id: this.config.id,
             device: this.deviceData
         }

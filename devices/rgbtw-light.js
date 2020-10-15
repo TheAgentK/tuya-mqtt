@@ -5,12 +5,16 @@ const utils = require('../lib/utils')
 
 class RGBTWLight extends TuyaDevice {
     async init() {
-        await this.guessLightInfo()
+        // If no manual config try to detect device settings
+        if (!this.config.dpsPower) { 
+            await this.guessLightInfo()
+        }
 
+        // If detection failed and no manual config return without initializing
         if (!this.guess.dpsPower && !this.config.dpsPower) {
             debug('Automatic discovery of Tuya bulb settings failed and no manual configuration') 
             return
-        }        
+        }     
 
         // Set device specific variables
         this.config.dpsPower = this.config.dpsPower ? this.config.dpsPower : this.guess.dpsPower
@@ -25,7 +29,6 @@ class RGBTWLight extends TuyaDevice {
         this.config.colorType = this.config.colorType ? this.config.colorType : this.guess.colorType
 
         this.deviceData.mdl = 'RGBTW Light'
-
         this.isRgbtwLight = true
 
         // Map generic DPS topics to device specific topic names
@@ -66,7 +69,7 @@ class RGBTWLight extends TuyaDevice {
 
         // If device supports Color Temperature add color temp device topic
         if (this.config.dpsColorTemp) {
-            // Values used for tranform
+            // Values used for tranforming from 1-255 scale to mireds range
             const rangeFactor = (this.config.maxColorTemp-this.config.minColorTemp)/100
             const scaleFactor = this.config.colorTempScale/100
             const tuyaMaxColorTemp = this.config.maxColorTemp/rangeFactor*scaleFactor
@@ -104,6 +107,9 @@ class RGBTWLight extends TuyaDevice {
             white_value_state_topic: this.baseTopic+'white_brightness_state',
             white_value_command_topic: this.baseTopic+'white_brightness_command',
             white_value_scale: 100,
+            availability_topic: this.baseTopic+'status',
+            payload_available: 'online',
+            payload_not_available: 'offline',
             unique_id: this.config.id,
             device: this.deviceData
         }

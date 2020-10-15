@@ -9,9 +9,26 @@ const SimpleSwitch = require('./devices/simple-switch')
 const SimpleDimmer = require('./devices/simple-dimmer')
 const RGBTWLight = require('./devices/rgbtw-light')
 const GenericDevice = require('./devices/generic-device')
+const utils = require('./lib/utils')
 
 var CONFIG = undefined
 var tuyaDevices = new Array()
+
+// Setup Exit Handlers
+process.on('exit', processExit.bind(0))
+process.on('SIGINT', processExit.bind(0))
+process.on('SIGTERM', processExit.bind(0))
+process.on('uncaughtException', processExit.bind(1))
+
+// Set unreachable status on exit
+async function processExit(exitCode) {
+    for (let tuyaDevice of tuyaDevices) {
+        tuyaDevice.device.disconnect()
+    }
+    if (exitCode || exitCode === 0) debug('Exit code: '+exitCode)
+    await utils.sleep(1)
+    process.exit()
+}
 
 function getDevice(configDevice, mqttClient) {
     const deviceInfo = {
@@ -37,6 +54,15 @@ function initDevices(configDevices, mqttClient) {
     for (let configDevice of configDevices) {
         const newDevice = getDevice(configDevice, mqttClient)
         tuyaDevices.push(newDevice)
+    }
+}
+
+async function republishDevices() {
+    // Republish devices and state after 30 seconds if restart of HA is detected
+    debug('Resending device config/state in 30 seconds')
+    await utils.sleep(30)
+    for (let device of tuyaDevices) {
+        device.init()
     }
 }
 
@@ -84,10 +110,9 @@ const main = async() => {
     mqttClient.on('connect', function (err) {
         debug('Connection established to MQTT server')
         let topic = CONFIG.topic + '#'
-        mqttClient.subscribe(topic, {
-            retain: CONFIG.retain,
-            qos: CONFIG.qos
-        })
+        mqttClient.subscribe(topic)
+        mqttClient.subscribe('homeassistant/status')
+        mqttClient.subscribe('hass/status')
         initDevices(configDevices, mqttClient)
     })
 
@@ -111,8 +136,13 @@ const main = async() => {
             const commandTopic = splitTopic[topicLength - 1]
             const deviceTopicLevel = splitTopic[1]
 
-            // If it looks like a valid command topic try to process it
-            if (commandTopic.includes('command')) {
+            if (topic === 'homeassistant/status' || topic === 'hass/status' ) {
+                debug('Home Assistant state topic '+topic+' received message: '+message)
+                if (message === 'online') {
+                    republishDevices()
+                }
+            } else if (commandTopic.includes('command')) {
+                // If it looks like a valid command topic try to process it
                 debugCommand('Received MQTT message -> ', JSON.stringify({
                     topic: topic,
                     message: message
