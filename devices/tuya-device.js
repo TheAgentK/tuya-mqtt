@@ -35,14 +35,15 @@ class TuyaDevice {
             mf: 'Tuya'
         }
 
-        // Objects to hold cached device state data
-        this.state = {
-            "dps": {},
-            "color": {'h': 0, 's': 0, 'b': 0}
-        }
+        // Initialize properties to hold cached device state data
+        this.dps = {}
+        this.color = {'h': 0, 's': 0, 'b': 0}
 
-        this.deviceTopics = {}     // Property to hold friendly topics template
-        this.heartbeatsMissed = 0  // Used to monitor heartbeat status to detect offline device
+        // Device friendly topics
+        this.deviceTopics = {}
+
+        // Missed heartbeat monitor
+        this.heartbeatsMissed = 0
 
         // Build the MQTT topic for this device (friendly name or device id)
         if (this.options.name) {
@@ -113,8 +114,8 @@ class TuyaDevice {
             const key = this.deviceTopics[topic].key
             try {
                 const result = await this.device.get({"dps": key})
-                this.state.dps[key].val = result
-                this.state.dps[key].updated = true
+                this.dps[key].val = result
+                this.dps[key].updated = true
             } catch {
                 debugError('Could not get value for device DPS key '+key)
             }
@@ -130,8 +131,8 @@ class TuyaDevice {
             // Update cached device state data
             for (let key in data.dps) {
                 // Only update if the received value is different from previous value
-                if (this.state.dps[key] !== data.dps[key]) {
-                    this.state.dps[key] = {
+                if (this.dps[key] !== data.dps[key]) {
+                    this.dps[key] = {
                         'val': data.dps[key],
                         'updated': true
                     }
@@ -142,7 +143,7 @@ class TuyaDevice {
                     } else if (this.config.hasOwnProperty('dpsMode') && this.config.dpsMode == key) {
                         // If color/white mode is changing, force sending color state
                         // Allows overriding saturation value to 0% for white mode for the HSB device topics
-                        this.state.dps[this.config.dpsColor].updated = true
+                        this.dps[this.config.dpsColor].updated = true
                     }
                 }
             }
@@ -162,8 +163,8 @@ class TuyaDevice {
             const deviceTopic = this.deviceTopics[topic]
             const key = deviceTopic.key
             // Only publish values if different from previous value
-            if (this.state.dps[key] && this.state.dps[key].updated) {
-                const state = this.getTopicState(deviceTopic, this.state.dps[key].val)
+            if (this.dps[key] && this.dps[key].updated) {
+                const state = this.getTopicState(deviceTopic, this.dps[key].val)
                 if (state) { 
                     this.publishMqtt(this.baseTopic + topic, state, true)
                 }
@@ -177,15 +178,15 @@ class TuyaDevice {
     // Publish all dps-values to topic
     publishDpsTopics() {
         try {
-            if (!Object.keys(this.state.dps).length) { return }
+            if (!Object.keys(this.dps).length) { return }
 
             const dpsTopic = this.baseTopic + 'dps'
             // Publish DPS JSON data if not empty
             let data = {}
-            for (let key in this.state.dps) {
+            for (let key in this.dps) {
                 // Only publish values if different from previous value
-                if (this.state.dps[key].updated) {
-                    data[key] = this.state.dps[key].val
+                if (this.dps[key].updated) {
+                    data[key] = this.dps[key].val
                 }
             }
             data = JSON.stringify(data)
@@ -194,14 +195,14 @@ class TuyaDevice {
             this.publishMqtt(dpsStateTopic, data, false)
 
             // Publish dps/<#>/state value for each device DPS
-            for (let key in this.state.dps) {
+            for (let key in this.dps) {
                 // Only publish values if different from previous value
-                if (this.state.dps[key].updated) {
+                if (this.dps[key].updated) {
                     const dpsKeyTopic = dpsTopic + '/' + key + '/state'
-                    const data = this.state.dps.hasOwnProperty(key) ? this.state.dps[key].val.toString() : 'None'
+                    const data = this.dps.hasOwnProperty(key) ? this.dps[key].val.toString() : 'None'
                     debugState('MQTT DPS'+key+': '+dpsKeyTopic+' -> ', data)
                     this.publishMqtt(dpsKeyTopic, data, false)
-                    this.state.dps[key].updated = false
+                    this.dps[key].updated = false
                 }
             }
         } catch (e) {
@@ -227,7 +228,7 @@ class TuyaDevice {
                 const components = deviceTopic.components.split(',')
                 for (let i in components) {
                     // If light is in white mode always report saturation 0%, otherwise report actual value
-                    state.push((components[i] === 's' && this.state.dps[this.config.dpsMode].val === 'white') ? 0 : this.state.color[components[i]])
+                    state.push((components[i] === 's' && this.dps[this.config.dpsMode].val === 'white') ? 0 : this.color[components[i]])
                 }
                 state = (state.join(','))
                 break;
@@ -345,7 +346,7 @@ class TuyaDevice {
         switch (deviceTopic.type) {
             case 'bool':
                 if (command === 'toggle') {
-                    tuyaCommand.set = !this.state.dps[tuyaCommand.dps].val
+                    tuyaCommand.set = !this.dps[tuyaCommand.dps].val
                 } else {
                     command = this.parseBoolCommand(command)
                     if (typeof command.set === 'boolean') {
@@ -360,11 +361,11 @@ class TuyaDevice {
                 tuyaCommand.set = this.parseNumberCommand(command, deviceTopic)
                 break;
             case 'hsb':
-                this.updateSetColorState(command, deviceTopic.components)
+                this.updateCommandColor(command, deviceTopic.components)
                 tuyaCommand.set = this.parseTuyaHsbColor()
                 break;
             case 'hsbhex':
-                this.updateSetColorState(command, deviceTopic.components)
+                this.updateCommandColor(command, deviceTopic.components)
                 tuyaCommand.set = this.parseTuyaHsbHexColor()
                 break;
             default:
@@ -445,53 +446,51 @@ class TuyaDevice {
         let h, s, b
         if (this.config.colorType === 'hsbhex') {
             [, h, s, b] = (value || '0000000000ffff').match(/^.{6}([0-9a-f]{4})([0-9a-f]{2})([0-9a-f]{2})$/i) || [0, '0', 'ff', 'ff'];
-            this.state.color.h = parseInt(h, 16)
-            this.state.color.s = Math.round(parseInt(s, 16) / 2.55) // Convert saturation to 100 scale
-            this.state.color.b = Math.round(parseInt(b, 16) / 2.55) // Convert brightness to 100 scale
+            this.color.h = parseInt(h, 16)
+            this.color.s = Math.round(parseInt(s, 16) / 2.55) // Convert saturation to 100 scale
+            this.color.b = Math.round(parseInt(b, 16) / 2.55) // Convert brightness to 100 scale
         } else {
             [, h, s, b] = (value || '000003e803e8').match(/^([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})$/i) || [0, '0', '3e8', '3e8']
             // Convert from Hex to Decimal and cache values
-            this.state.color.h = parseInt(h, 16)
-            this.state.color.s = Math.round(parseInt(s, 16) / 10)   // Convert saturation to 100 Scale
-            this.state.color.b = Math.round(parseInt(b, 16) / 10)   // Convert brightness to 100 scale
+            this.color.h = parseInt(h, 16)
+            this.color.s = Math.round(parseInt(s, 16) / 10)   // Convert saturation to 100 Scale
+            this.color.b = Math.round(parseInt(b, 16) / 10)   // Convert brightness to 100 scale
         }
 
-        // Initialize the set color values for first time.  Used to conflicts 
-        // when mulitple HSB components are updated in quick succession
-        if (!this.state.hasOwnProperty('setColor')) {
-            this.state.setColor = {
-                'h': this.state.color.h,
-                's': this.state.color.s,
-                'b': this.state.color.b
+        // Initialize the command color values with existing color state
+        if (!this.hasOwnProperty('cmdColor')) {
+            this.cmdColor = {
+                'h': this.color.h,
+                's': this.color.s,
+                'b': this.color.b
             }
         }
     }
 
-    // Updates the set color values based on received value from command topics
-    // This is used to cache set color values when mulitple HSB components use
-    // different topics and updates come in quick succession 
-    updateSetColorState(value, components) {
+    // Caches color updates when HSB components have separate device topics
+    // cmdColor property always contains the desired HSB color state based on received 
+    // command topic messages vs actual device color state, which may be pending
+    updateCommandColor(value, components) {
         // Update any HSB component with a changed value
         components = components.split(',')
         const values = value.split(',')
         for (let i in components) {
-            this.state.setColor[components[i]] = Math.round(values[i])
+            this.cmdColor[components[i]] = Math.round(values[i])
         }
     }
 
-    // Returns Tuya HSB format value from current setColor HSB value
+    // Returns Tuya HSB format value from current cmdColor HSB values
     // Credit homebridge-tuya project for HSB conversion code
     parseTuyaHsbColor() {
-        // Convert new HSB color to Tuya style HSB format
-        let {h, s, b} = this.state.setColor
+        let {h, s, b} = this.cmdColor
         const hexColor = h.toString(16).padStart(4, '0') + (10 * s).toString(16).padStart(4, '0') + (10 * b).toString(16).padStart(4, '0')
         return hexColor
     }
 
-    // Returns Tuya HSBHEX format value from current setColor HSB value
+    // Returns Tuya HSBHEX format value from current cmdColor HSB values
     // Credit homebridge-tuya project for HSBHEX conversion code
     parseTuyaHsbHexColor() {
-        let {h, s, b} = this.state.setColor
+        let {h, s, b} = this.cmdColor
         const hsb = h.toString(16).padStart(4, '0') + Math.round(2.55 * s).toString(16).padStart(2, '0') + Math.round(2.55 * b).toString(16).padStart(2, '0');
         h /= 60;
         s /= 100;
@@ -525,20 +524,27 @@ class TuyaDevice {
 
     // Set white/colour mode based on 
     async setLight(topic, command) {
-
         let targetMode = undefined
-        const currentMode = this.config.dpsMode.val
-
+        
         if (topic.key === this.config.dpsWhiteValue || topic.key === this.config.dpsColorTemp) {
             // If setting white level or color temperature, light should be in white mode
             targetMode = 'white'
         } else if (topic.key === this.config.dpsColor) {
-            if (this.state.setColor.s < 10) {
-                // If saturation is < 10 then white mode
-                targetMode = 'white'
+            // Split device topic HSB components into array
+            const components = topic.components.split(',')
+
+            // If device topic inlucdes saturation check for changes
+            if (components.includes('s')) {
+                if (this.cmdColor.s < 10) {
+                    // Saturation changed to < 10% = white mode
+                    targetMode = 'white'
+                } else {
+                    // Saturation changed to >= 10% = color mode
+                    targetMode = 'colour'
+                }
             } else {
-                // If saturation > 0 and changing hue, set color mode
-                targetMode = 'colour'
+                // For other cases stay in existing mode
+                targetMode = this.dps[this.config.dpsMode].val
             }
         }
 
