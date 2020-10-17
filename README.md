@@ -54,7 +54,7 @@ If you use the "tuya-cli wizard" method to acquire your device keys you can leve
     key: '899810012345678'
   }
 ]
-
+```
 Note that, because the format is JSON5, which is a superset of JSON, you can use standard, strict JSON syntax, or the more forgiving JSON5 format, or even mix and match in the same file.
 
 While the above syntax is enough to create a working tuya-mqtt install with generic devices, the full power and simplicity of tuya-mqtt 3.0 is only unlocked by configuring device types to get .  Please see the full [DEVICES](docs/DEVICES.md) documenation for details.
@@ -63,13 +63,8 @@ While the above syntax is enough to create a working tuya-mqtt install with gene
 ```
 node tuya-mqtt.js
 
-// For debugging purpose, to use DEBUG : https://www.npmjs.com/package/debug
-
-//on Linux machines at the bash command prompt, to turn ON DEBUG:
+// To enable debugging output (required when opening an issue)
 DEBUG=tuya-mqtt:* tuya-mqtt.js
-
-// on Windows machines at the cmd.exe command prompt, to turn ON DEBUG:
-Set DEBUG=tuya-mqtt:* & node c:/openhab2/userdata/etc/scripts/tuya-mqtt.js
 ```
 
 ### Usage Overview
