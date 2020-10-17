@@ -3,11 +3,9 @@ This project provides an MQTT gateway for locally controlling IOT devices manufa
 
 Using this script requires obtaining the device ID and local keys for each of your devices after they are configured via the Tuya/Smart Life or other Tuya compatible app (there are many).  With this information it is possible to communicate locally with Tuya devices using Tuya protocol version 3.1 and 3.3 without using the Tuya Cloud service, however, getting the keys requires signing up for a Tuya IOT developer account or using one of several other alternative methods (such as dumping the memory of a Tuya based app running on Andriod).
 
-Acquiring device keys is outside the scope of this project.  Please see the instructions at the TuyAPI project (on which this script is based) available at the TuyAPI project site:
+To acquire keys for your device please see the instructions at the TuyAPI project (on which this script is based) available at the [TuyAPI GitHub site](https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md).
 
-https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md.
-
-Issues opened regarding acquiring keys will likely be closed without comment.  Please verify that your device can be queried and controlled via tuya-cli before opening an issue.  If your device can't be controlled by tuya-cli then it cannot be used with this project.
+**Acquiring device keys is outside the scope of this project!** Issues opened regarding acquiring keys will likely be closed without comment. Please verify that your device can be queried and controlled via tuya-cli before opening any issue.  If your device can't be controlled by tuya-cli then it cannot be used with this project.
 
 **!!!!!!!!!! Important information regarding the 3.0 release !!!!!!!!!!**\
 The 3.0.0 release (Oct 17th, 2020) is a major refactor of the tuya-mqtt project and, as such, is a breaking release for all users of previous versions.  Almost everything about the project is different, including configuration method, topic names, etc.  Upgrading users should carefully read the instructions below and assume they are starting over from scratch.
@@ -34,8 +32,9 @@ Tuya-mqtt has two different configuration files.  The first is config.json, a si
 ### Seting up config.json:
 ```
 cp config.json.sample config.json
-
-// Edit config.json with your MQTT broker settings and save
+```
+**Edit config.json with your MQTT broker settings and save**
+```
 nano config.json 
 ```
 
@@ -62,8 +61,9 @@ While the above syntax is enough to create a working tuya-mqtt install with gene
 ### Starting tuya-mqtt
 ```
 node tuya-mqtt.js
-
-// To enable debugging output (required when opening an issue)
+```
+**Enable debugging output (required when opening an issue)**
+```
 DEBUG=tuya-mqtt:* tuya-mqtt.js
 ```
 
@@ -83,7 +83,7 @@ tuya/86435357d8b123456789/
 ```
 All additional state/command topics are then built below this level. You can view the status of the device using the status topic, which reports "online" or "offline" based on whether tuya-mqtt currently has an active connection to the device or not.
 ```
-tuya/kitche_table/state <-- oneline/offline
+tuya/kitche_table/state --> online/offline
 ```
 You can also trigger the device to send an immediate update of all known device DPS topics by sending the message "get-states" to the command topic (this topic exist even if there is no correspoinding state topic):
 ```
@@ -114,9 +114,9 @@ tuya/dimmer_device/DPS/command
 ### DPS Key topics
 In addition to the JSON DPS topic, it's also possible to use the DPS key topics.  DPS key topics allow you to monitor and send simple bool/number/string values directly to DPS keys without having to use the Tuya JSON format, the conversion to Tuya JSON is handled by tuya-mqtt.  Using the example from above, turning on the dimmer and setting brightness to 50% you would simply issue the message "true" to DPS/1/command and the message "128" to DPS/2/command.
 ```
-tuya/dimmer_device/DPS/1/state    <-- true/false for on/off state
+tuya/dimmer_device/DPS/1/state    --> true/false for on/off state
 tuya/dimmer_device/DPS/2/command  <-- 1-255 for brightness state
-tuya/dimmer_device/DPS/1/state    <-- accept true/false for turning device on/off
+tuya/dimmer_device/DPS/1/state    --> accept true/false for turning device on/off
 tuya/dimmer_device/DPS/2/command  <-- accepts 1-255 for controlling brightness level
 ```
 **!!! Important Note !!!**\

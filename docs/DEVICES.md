@@ -33,9 +33,9 @@ Simple devices that support only on/off.
 | state | Power state | on/off |
 | command | Set power state | on/off, 0/1, true/false |
 
-Configuration override options:
+Manual configuration options:
 | Option | Description | Default |
-| --- | --- | |
+| --- | --- | --- |
 | dpsPower | DPS key for power state | 1 |
 
 ### SimpleDimmer
@@ -47,28 +47,30 @@ Simple device with on/off and brightness functions (dimmer switches or lights)
 | brightness_state | Brightness in % | 1-100 |
 | brightness_command | set brightness in % | 1-100 |
 
-Configuration override options:
+Manual configuration options:
 | Option | Description | Default |
-| --- | --- | |
+| --- | --- | --- |
 | dpsPower | DPS key for power state | 1 |
 | dpsBrightness | DPS key for brightness state | 2 |
 | brightnessScale | Scale for brightness DPS value | 255 |
 
 ### RGBTWLight
 The RGBTWLight device support Tuya color lights (bulbs and LEDs). Tuya lights operate in either white or color mode.  The RGBTWLight device automatically switches between modes on certain conditions as documented below:
-| Condition | Mode Switch |
+| Condition | Mode |
 | --- | --- |
-| Changes white brightness | Yes: white |
-| Changes to color temperature (for device with color temp support) | Yes: white |
-| Saturation < 10 % | Yes: white |
-| Saturation >= 10 % | Yes: color |
-| All other changes | No: remain in current mode |
+| Changes white brightness | white |
+| Changes to color temperature (for device with color temp support) | white |
+| Saturation < 10 % | white |
+| Saturation >= 10 % | color |
+| All other changes | current mode |
 
-This means changing the hue of the light will only switch to color mode if saturation is also >= 10%.  Some lights automatically switch to color mode when any HSB value is updated, but, if saturation remains < 10%, the code will force the light back to white mode.  This sometimes causes a very fast flicker when chaning Hue or color brightness while the saturation is < 10%.  I expect this not to be a common issue and implemented this in an attempt to make all bulbs have a consistent behavior.
+This means changing the hue of the light will only switch to color mode if saturation is also >= 10%.  Some lights automatically attempt to switch to color mode when any HSB value is updated however, if the saturation setting remains < 10%, tuya-mqtt will force the light back to white mode in this case.  This can cause a very quick flicker when chaning hue or color brightness while the saturation remains below the 10% threshold.  I expect this not to be a common issue and implemented this in an attempt to make all tuya lights behave in a consistent way.
 
-When the bulb is in white mode, saturation values in the friendly topics are always reported as 0%.  This is true even if the mode is toggled manually from color to white mode using the mode_command or the Tuya/SmartLife app.  When the light is toggled back to color mode, saturation will be reported at the correct level.  This is done primarly as a means to indicate color state to automation platforms that don't have a concept of white/color mode, otherwise a light in white mode my still be represented with a color icon in the platform UI.
+When the bulb is in white mode, saturation values in the friendly topics are always reported as 0%.  This is true even if the mode is toggled manually from color to white mode using the mode_command topic or the Tuya/SmartLife app.  When the light is toggled back to color mode, saturation will be reported at the correct level.  This is done primarly as a means to indicate color state to automation platforms that don't have a concept of white/color mode, otherwise a light in white mode may still be represented with a color icon in the platforms UI.
 
 Not all devices support color temperature and the script attempts to detect this capability and enables the color temperature topics only when found.  Color temperature topics report in Mireds (commonly used by automation tools) and the default range supports roughly 2500K-6500K.  This works reasonably well for most available Tuya devices, even if they are not exactly in this range, but, if you know a devices specific color range, the limits can be manually specified to more accurately reflect the exact color temperature.
+
+Tuya bulbs store their HSB color value in a single DPS key using a custom format.  Some bulbs use a 14 character format, referred to as HSBHEX, which represents the saturation and brightness values from 0-255 as 2 character hex, while the others use a 12 character format, referred to as HSB, which still uses hex values, but stores saturation and brightness values from 0-1000 as 4 character hex.  The code attempts to autodetect the format used by the bulb and perform the proper conversion in all cases, but this can be overridden for cases where the dection method fails.
 
 | Topic | Description | Values |
 | --- | --- | --- |
@@ -87,9 +89,9 @@ Not all devices support color temperature and the script attempts to detect this
 | color_temp_state | Color temperature in mireds (only available if device support color temp) | 154-400 (defult range, can be overridden) |
 | color_temp_command | Set color temperature in mireds (only available if device support color temp)  | 154-400 (defult range, can be overridden) |
 
-The RGBTWLight function attempts to detect all required options automatically, this works for most common devices which use a standard Tuya DPS configurations (typically 1-5 or 20-24), however, it is possible to override the defaults for all used values. Below are the manual options for RGBTWLight:
+Manual configuration options:
 | Option | Description | Default (common detected values) |
-| --- | --- | |
+| --- | --- | --- |
 | dpsPower | DPS key for power state | Auto Detect (1,20) |
 | dpsMode | DPS key for white/color mode state | Auto Detect (2,21) |
 | dpsWhiteValue | DPS key for white mode brightness | Auto Detect (3,22) |
@@ -101,7 +103,7 @@ The RGBTWLight function attempts to detect all required options automatically, t
 | dpsColor | DPS key for HSB color values | Auto Detect (5,24) |
 | colorType | Tuya color format for color DPS key | Auto Detect (hsb, hsbhex) |
 
-To use these options simply add them to device.conf file, example:
+To use the manual configuration options simply add them to device.conf file after defining the device type like the following example:
 ```
 [
   {
