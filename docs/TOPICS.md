@@ -48,10 +48,14 @@ tuya/dimmer_device/brightness_state  <-- Accepts 1-100 scale for brightness %
 More complex mappings are possible.  All pre-defined device templates use the same, built-in, templating engine, so further examples can been seen by browsing the source code of the device files.  Below are the available options for each value type:
 
 ### Boolean values
+| option | value |
+| --- | --- |
 | type | 'bool' |
 | key | DPS key for the value |
 
 ### Integer values
+| option | value |
+| --- | --- |
 | type | 'int' |
 | key | DPS key for the value |
 | min | Minumum value allowed for the command topic |
@@ -60,6 +64,8 @@ More complex mappings are possible.  All pre-defined device templates use the sa
 | commandMath | Simple math applied to command value before being set to DPS key |
 
 ### Floating point values
+| option | value |
+| --- | --- |
 | type | 'float' |
 | key | DPS key for the value |
 | min | Minumum value allowed for the command topic |
@@ -68,15 +74,21 @@ More complex mappings are possible.  All pre-defined device templates use the sa
 | commandMath | Simple math applied to command value before being set to DPS key |
 
 ### String values
+| option | value |
+| --- | --- |
 | type | 'string' |
 | key | DPS key for the value |
 
 ### Tuya HSB values (newer style Tuya, 12 character color value)
+| option | value |
+| --- | --- |
 | type | 'hsb' |
 | key | DPS key for the value |
 | components | Comma separated list of HSB components that should be included in this topic |
 
 ### Tuya HSBHEX values (older style Tuya 14 character color value)
+| option | value |
+| --- | --- |
 | type | 'hsbhex' |
 | key | DPS key for the value |
 | components | Comma separated list of HSB components that should be included in this topic |
@@ -84,12 +96,13 @@ More complex mappings are possible.  All pre-defined device templates use the sa
 ## DPS Topics
 Controlling devices directly via DPS topics requires enough knowledge of the device to know which topics accept what values.  There are actually two differnt methods interfacing with DPS values, the JSON DPS topic, and the individual DPS key topics.
 
-### JSON DPS Topics
+### DPS JSON topic
 The JSON DPS topic allows controlling Tuya devices by sending raw, Tuya style JSON messages to the command topic, and by monitoring for Tuya style JSON replies on the state topic.  You can get more details on this format by reading the [TuyAPI documentaiton](https://codetheweb.github.io/tuyapi/index.html), but, for example, to turn off a dimmer switch you could issue a MQTT message containing the JSON value {dps: 1, set: false} to the DPS/command topic for the device.  If you wanted to turn the dimmer on, and set brightness to 50%, you could issue separate messages {dps: 1, set: true} and then {dps: 2, set: 128}, or, the Tuya JSON protocol also allows setting multiple values in a single set command using the format {'multiple': true, 'data': {'1': true, '2': 128}}.  JSON state and commands should use the DPS/state and DPS/command topics respectively.  Below is an example of the topics:
 ```
 tuya/dimmer_device/DPS/state
 tuya/dimmer_device/DPS/command
 ```
+### DPS key topics
 In addition to the JSON DPS topic, it's also possible to use the DPS key topics.  DPS key topics allow you to monitor and send simple bool/number/string values directly to DPS keys without having to use the Tuya JSON format, the conversion to Tuya JSON is handled by tuya-mqtt.  Using the example from above, turning on the dimmer and setting brightness to 50% you would simply issue the message "true" to DPS/1/command and the message "128" to DPS/2/command.
 ```
 tuya/dimmer_device/DPS/1/state    <-- true/false for on/off state

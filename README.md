@@ -3,11 +3,11 @@ This project provides an MQTT gateway for locally controlling IOT devices manufa
 
 Using this script requires obtaining the device ID and local keys for each of your devices after they are configured via the Tuya/Smart Life or other Tuya compatible app (there are many).  With this information it is possible to communicate locally with Tuya devices using Tuya protocol version 3.1 and 3.3 without using the Tuya Cloud service, however, getting the keys requires signing up for a Tuya IOT developer account or using one of several other alternative methods (such as dumping the memory of a Tuya based app running on Andriod).
 
-Acquiring device keys outside of the scope of this project.  Please see the instructions at the TuyAPI project (on which this script is based) available at the TuyAPI project site:
+Acquiring device keys is outside the scope of this project.  Please see the instructions at the TuyAPI project (on which this script is based) available at the TuyAPI project site:
 
 https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md.
 
-Issues opened regarding acquiring keys will be closed without comment.  Please verify that your device can be queried and controlled via tuya-cli before opening an issue.  If your device can't be controlled by tuya-cli then it cannot be used with this project.
+Issues opened regarding acquiring keys will likely be closed without comment.  Please verify that your device can be queried and controlled via tuya-cli before opening an issue.  If your device can't be controlled by tuya-cli then it cannot be used with this project.
 
 **!!!!!!!!!! Important information regarding the 3.0 release !!!!!!!!!!**\
 The 3.0.0 release (Oct 17th, 2020) is a major refactor of the tuya-mqtt project and, as such, is a breaking release for all users of previous versions.  Almost everything about the project is different, including configuration method, topic names, etc.  Upgrading users should carefully read the instructions below and assume they are starting over from scratch.
