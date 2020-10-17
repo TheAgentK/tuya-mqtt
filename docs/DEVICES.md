@@ -1,4 +1,4 @@
-# Device in tuya-mqtt
+# tuya-mqtt - Devices
 The most powerful feature in tuya-mqtt is the ability to configure devices to use friendly topics.  For some devices there exist pre-defined device templates which makes using those devices quite easy, simply add the type information to the devices.conf file and tuya-mqtt automatically creates friendly topics for that device.  Friendly topics make it easy to communicate with the device in a standard way and thus integrating into various Home Automation platforms.  The topic style generally follows that used by the Home Assistant MQTT integration components and the pre-defined devices even send Home Assistant style MQTT discovery messages during startup to make integration with Home Assistant, or other platforms which understand Home Assistant MQTT discovery, even easier.
 
 If your device does not have a pre-defined device template, you can still create a template using the [generic device template](#generic-device-templates) feature.

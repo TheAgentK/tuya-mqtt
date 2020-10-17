@@ -1,5 +1,5 @@
 # tuya-mqtt
-This project provides an MQTT gateway for locally controlling IOT devices manufactured by Tuya Inc and sold under many different brands.
+This project provides a method for locally controlling IOT devices manufactured by Tuya Inc., and sold under many different brands, via MQTT.
 
 Using this script requires obtaining the device ID and local keys for each of your devices after they are configured via the Tuya/Smart Life or other Tuya compatible app (there are many).  With this information it is possible to communicate locally with Tuya devices using Tuya protocol version 3.1 and 3.3 without using the Tuya Cloud service, however, getting the keys requires signing up for a Tuya IOT developer account or using one of several other alternative methods (such as dumping the memory of a Tuya based app running on Andriod).
 
