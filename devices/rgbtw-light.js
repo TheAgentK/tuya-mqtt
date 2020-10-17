@@ -22,8 +22,8 @@ class RGBTWLight extends TuyaDevice {
         this.config.dpsWhiteValue = this.config.dpsWhiteValue ? this.config.dpsWhiteValue : this.guess.dpsWhiteValue
         this.config.whiteValueScale = this.config.whiteValueScale ? this.config.whiteValueScale : this.guess.whiteValueScale
         this.config.dpsColorTemp = this.config.dpsColorTemp ? this.config.dpsColorTemp : this.guess.dpsColorTemp
-        this.config.minColorTemp = this.config.minColorTemp ? this.config.minColorTemp : 160
-        this.config.maxColorTemp = this.config.maxColorTemp ? this.config.maxColorTemp : 385
+        this.config.minColorTemp = this.config.minColorTemp ? this.config.minColorTemp : 154 // ~6500K
+        this.config.maxColorTemp = this.config.maxColorTemp ? this.config.maxColorTemp : 400 // ~2500K
         this.config.colorTempScale = this.config.colorTempScale ? this.config.colorTempScale : this.guess.colorTempScale
         this.config.dpsColor = this.config.dpsColor ? this.config.dpsColor : this.guess.dpsColor
         this.config.colorType = this.config.colorType ? this.config.colorType : this.guess.colorType
