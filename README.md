@@ -33,7 +33,7 @@ Tuya-mqtt has two different configuration files.  The first is config.json, a si
 ```
 cp config.json.sample config.json
 ```
-**Edit config.json with your MQTT broker settings and save**
+Edit config.json with your MQTT broker settings and save:
 ```
 nano config.json 
 ```
@@ -62,51 +62,51 @@ While the above syntax is enough to create a working tuya-mqtt install with gene
 ```
 node tuya-mqtt.js
 ```
-**Enable debugging output (required when opening an issue)**
+To enable debugging output (required when opening an issue):
 ```
 DEBUG=tuya-mqtt:* tuya-mqtt.js
 ```
 
 ### Usage Overview
-Tuya devices maps their unique functions to various values stored in data points (DPS) which are references by an index number, generally referred to as the DPS key.  For example, a simple on/off switch may have a single DPS value, store in DPS index 1, with a setting of true/false representing the on/off state of the device.  The device state can be read via DPS1, and, for values that can be changed, sending true/false to DPS1 will turn the device on/off.  A simple dimmer might have the same DPS1 value, but an additional DPS2 value from 1-255 representing the state of the dimmer.  More complex devices use more DPS keys with various values representing the states and control functions of the device.
+Tuya devices work by mapping device functions to various values stored in data points (refered to as DPS values) which are referenced via an index number, referred to as the DPS key.  For example, a simple on/off switch may have a single DPS value, stored in DPS kep 1 (DPS1).  This value is likely to have a setting of true/false representing the on/off state of the device.  The device state can be read via DPS1, and, for values that can be changed (some DPS values are read-only), sending true/false to DPS1 will turn the device on/off.  A simple dimmer might have the same DPS1 value, but an additional DPS2 value from 1-255 representing the state of the dimmer.  More complex devices use more DPS keys with various values representing the states and control functions of the device.
 
-The tuya-mqtt script provides access to these DPS keys and their values via MQTT, allowing any tool that can use MQTT to monitoring and control these devices locally.  In addition to providing access to the raw DPS data, there is also a simple template engine that allows those DPS values to be mapped to device specific topics, called "friendly topics" allowing for consistent mapping even between devices that use different DPS keys for the same functions.  These friendly topics also support various transforms and other functions that make it easier for other devices to communicate with Tuya devices without know specific details of how those devices store that data.
+The tuya-mqtt script provides access to these DPS keys and their values via MQTT, allowing any tool that can use MQTT to monitor and control these devices via a local network connection.  In addition to providing access to the raw DPS data, there is also a template engine that allows those DPS values to be mapped to device specific topics, called "friendly topics", allowing for consistent mapping even between devices that use different DPS keys for the same functions.  These friendly topics also support various transforms and other functions that make it easier for other devices to communicate with Tuya devices without a detailed understanding of the data formats Tuya devices use.
 
 ### MQTT Topic Overview
 The top level topics are created using the device name or ID as the primary identifier.  If the device name is available, it will be converted to lowercase and any spaces replace with underscores('_') characters so, for example, if the device as the name "Kitche Table", the top level topic would be:
 ```
-tuya/kitche_table/
+tuya/kitchen_table/
 ```
 If the device name was not available in the devices.conf file, tuya-mqtt falls back to using the device ID for the top level topic:
 ```
 tuya/86435357d8b123456789/
 ```
-All additional state/command topics are then built below this level. You can view the status of the device using the status topic, which reports "online" or "offline" based on whether tuya-mqtt currently has an active connection to the device or not.
+All additional state/command topics are then built below this level. You can view the connectivity status of the device using the status topic, which reports online/offline based on whether tuya-mqtt has an active connection to the device or not.  The script monitors both the device socket connection for errors and also device heartbeats, to report proper status. 
 ```
 tuya/kitche_table/state --> online/offline
 ```
-You can also trigger the device to send an immediate update of all known device DPS topics by sending the message "get-states" to the command topic (this topic exist even if there is no correspoinding state topic):
+You can also trigger the device to send an immediate update of all known device DPS topics by sending the message "get-states" to the command topic (this topic exist for all devices):
 ```
 tuya/kitche_table/command <-- get-states
 ```
-As noted above, tuya-mqtt supports two distinct topic types for interfacing with and controlling devices. For all devices, the DPS topics are always published and commands are accepted, however, friendly topics are the generally recommended approach but require you to create a template for your device if a pre-defined template does not currently exist.
+As noted above, tuya-mqtt supports two distinct topic types for interfacing with and controlling devices. For all devices, the DPS topics are always published and commands are accepted, however, friendly topics are the generally recommended approach but require you to use a pre-defined device template or create a customer template for your device when using the generic device.
 
 If you do create a template for your device, please feel free to share it with the community as adding additional pre-defined devices is desired for future versions of tuya-mqtt.  There is a templates section of the project that you can submit a PR for your templates.
 
 If you would like to use the raw DPS topics, please jump to the [DPS topics](#dps-topics) section of this document.
 
 ## Friendly Topics
-As noted above, friendly topics are only available when using a pre-defined device template or, for the generic device, when you have defined a custom template for your device.  Friendly topics use the tuyq-mqtt templating engine to map raw Tuya DPS key values to easy to consume topics and transform the data where needed.
+Friendly topics are only available when using a pre-defined device template or, for the generic device, when you have defined a custom template for your device.  Friendly topics use the tuyq-mqtt templating engine to map raw Tuya DPS key values to easy to consume topics and transform the data where needed.
 
 Another advantage of friendly topics is that not all devices respond to schema requets (i.e. a request to report all DPS topics the device uses).  Because of this, it's not always possible for tuya-mqtt to know which DPS topics to acquire state information from during initial startup.  With a defined template the required DPS keys for each friendly topic are configured and tuya-mqtt will always query these DPS key values during initial connection to the device and report their state appropriately.
 
-For more details on using friendly topics, please read the [DEVICES](docs/DEVICES.md) documentation.
+For more details on using friendly topics, please read the [DEVICES](docs/DEVICES.md) documentation which discusses how to configure supported devices or define a custom template.
 
 ## DPS Topics
-Controlling devices directly via DPS topics requires enough knowledge of the device to know which topics accept what values.  There are two differnt methods interfacing with DPS values, the JSON DPS topic, and the individual DPS key topics.
+Controlling devices directly via DPS topics requires enough knowledge of the device to know which topics accept what values.  Described below are two differnt methods for interfacing with DPS values, the JSON DPS topic, and the individual DPS key topics.
 
 ### DPS JSON topic
-The JSON DPS topic allows controlling Tuya devices by sending raw, Tuya style JSON messages to the command topic, and by monitoring for Tuya style JSON replies on the state topic.  You can get more details on this format by reading the [TuyAPI documentaiton](https://codetheweb.github.io/tuyapi/index.html), but, for example, to turn off a dimmer switch you could issue a MQTT message containing the JSON value {dps: 1, set: false} to the DPS/command topic for the device.  If you wanted to turn the dimmer on, and set brightness to 50%, you could issue separate messages {dps: 1, set: true} and then {dps: 2, set: 128}, or, the Tuya JSON protocol also allows setting multiple values in a single set command using the format {'multiple': true, 'data': {'1': true, '2': 128}}.  JSON state and commands should use the DPS/state and DPS/command topics respectively.  Below is an example of the topics:
+The JSON DPS topic allows controlling Tuya devices by sending Tuya native style JSON messages to the command topic, and by monitoring for Tuya style JSON replies on the state topic.  You can get more details on this format by reading the [TuyAPI documentaiton](https://codetheweb.github.io/tuyapi/index.html), but, for example, to turn off a dimmer switch you could issue a MQTT message containing the JSON value ```{dps: 1, set: false}``` to the DPS/command topic for the device.  If you wanted to turn the dimmer on, and set brightness to 50%, you could issue separate messages ```{dps: 1, set: true}``` and then ```{dps: 2, set: 128}```, or, the Tuya JSON protocol also allows setting multiple values in a single set command using the format ```{'multiple': true, 'data': {'1': true, '2': 128}}```.  JSON state and commands should use the DPS/state and DPS/command topics respectively.  Below is an example of the topics:
 ```
 tuya/dimmer_device/DPS/state
 tuya/dimmer_device/DPS/command
@@ -120,7 +120,7 @@ tuya/dimmer_device/DPS/1/state    --> accept true/false for turning device on/of
 tuya/dimmer_device/DPS/2/command  <-- accepts 1-255 for controlling brightness level
 ```
 **!!! Important Note !!!**\
-When sending commands directly to DPS values there are no controls on what values are sent as tuya-mqtt has no way to know what are valid vs invalid values.  Sending values that are out-of-range or of different types can cause unpredicatable behavior of your device, from causing timeouts, to reboots, to hanging the device.  While I've never seen a device not recover after a restart, please keep this in mind when sending commands to your device.
+When sending commands directly to DPS values there are no limitation on what values are sent as tuya-mqtt has no way to know what are valid vs invalid for any given DPS key.  Sending values that are out-of-range or of different types than the DPS key expects can cause unpredicatable behavior of your device, from causing timeouts, to reboots, to hanging the device.  While I've never seen a device fail to recover after a restart, please keep this in mind when sending commands to your device.
 
 ## Issues
 Not all Tuya protocols are supported.  For example, some devices use protocol 3.2 which currently remains unsupported by the TuyAPI project due to lack of enough information to reverse engineer the protcol.  If you are unable to control your devices with tuya-mqtt please verify that you can query and control them with tuya-cli first.  If tuya-cli works, then this script should also work, if it doesn't then this script will not work either.
