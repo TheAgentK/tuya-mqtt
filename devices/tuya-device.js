@@ -522,7 +522,7 @@ class TuyaDevice {
         return hex + hsb;
     }
 
-    // Set white/colour mode based on 
+    // Set white/colour mode based on received commands
     async setLight(topic, command) {
         let targetMode = undefined
         
