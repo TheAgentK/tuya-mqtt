@@ -1,14 +1,18 @@
 # tuya-mqtt
-This project provides an MQTT gateway for locally controlling home automation devices made by Tuya Inc and sold under many different brands.  To use this script you will need to obtain the device ID and local keys for each of your devices after they are configured via the Tuya/Smart Life or other Tuya compatible app (there are many).  With this information it is possible to communicate locally with Tuya devices using Tuya protocol version 3.1 and 3.3, without using the Tuya Cloud service, however, getting the keys requires signing up for a Tuya IOT developer account or using one of several other alternative methods (such as dumping the memory of a Tuya based app running on Andriod).
+This project provides an MQTT gateway for locally controlling IOT devices manufactured by Tuya Inc and sold under many different brands.
 
-Acquiring keys is not part of this project, please see the instructions at the TuyAPI project (on which this script is based) available at the TuyAPI project site:
+Using this script requires obtaining the device ID and local keys for each of your devices after they are configured via the Tuya/Smart Life or other Tuya compatible app (there are many).  With this information it is possible to communicate locally with Tuya devices using Tuya protocol version 3.1 and 3.3 without using the Tuya Cloud service, however, getting the keys requires signing up for a Tuya IOT developer account or using one of several other alternative methods (such as dumping the memory of a Tuya based app running on Andriod).
+
+Acquiring device keys outside of the scope of this project.  Please see the instructions at the TuyAPI project (on which this script is based) available at the TuyAPI project site:
 
 https://github.com/codetheweb/tuyapi/blob/master/docs/SETUP.md.
 
-**!!!!!!!!!! Important information regarding the 3.0 release !!!!!!!!!!**
-The 3.0.0 release (Oct 17th, 2020) is a major refactor of the tuya-mqtt project and, as such, is a breaking release.  Almost everything about the project is different, including configuration, topic names, etc.  Upgrading users should carefully read the instructions below and assume they are starting over from scratch.
+Issues opened regarding acquiring keys will be closed without comment.  Please verify that your device can be queried and controlled via tuya-cli before opening an issue.  If your device can't be controlled by tuya-cli then it cannot be used with this project.
 
-## Instructions:
+**!!!!!!!!!! Important information regarding the 3.0 release !!!!!!!!!!**\
+The 3.0.0 release (Oct 17th, 2020) is a major refactor of the tuya-mqtt project and, as such, is a breaking release for all users of previous versions.  Almost everything about the project is different, including configuration method, topic names, etc.  Upgrading users should carefully read the instructions below and assume they are starting over from scratch.
+
+## Installation instructions:
 Download this project to your system into any directory (example below uses /opt/tuya-mqtt) and install tuyapi from the same folder that the tuya-mqtt.js is in
 ```
 // switch to opt directory
@@ -35,7 +39,7 @@ cp config.json.sample config.json
 nano config.json 
 ```
 
-## Setup devices.conf:
+## Seting up devices.conf:
 If you use the "tuya-cli wizard" method to acquire your device keys you can leverage the output of this tool as the start of your devices.conf file.  Otherwise, you want to create a file using a formate like this:
 ```
 [
@@ -68,8 +72,10 @@ DEBUG=tuya-mqtt:* tuya-mqtt.js
 Set DEBUG=tuya-mqtt:* & node c:/openhab2/userdata/etc/scripts/tuya-mqtt.js
 ```
 
-### Tuya DPS values Overview
-Tuya devices are monitored and controlled using a simple API where a devices functions are mapped to DPS (data point state) values stored in various numbered keys.  For example, a simple on/off switch may have a single key, DPS1, with a setting of true/false representing the on/off state of the device.  The device state can be read via this DPS1 key, and, for values that can be changed, sending true/false to DPS 1 will turn the device on/off.  A simple dimmer might have the same DPS1 key as true/false for on/off, and a DPS2 key as a value from 0-255 to represent the state of the dimmer value.  More complex devices use more DPS keys with various values representing the states and control functions of the device.
+### Usage Overview
+Tuya devices are monitored and controlled using a simple API where a devices various functions are mapped to DPS (data point state) values stored in various key indexes.  For example, a simple on/off switch may have a single key, DPS 1, with a setting of true/false representing the on/off state of the device.  The device state can be read via this DPS 1 key, and, for values that can be changed, sending true/false to DPS 1 will turn the device on/off.  A simple dimmer might have the same DPS 1 key using true/false for on/off, and an additional DPS 2 key as a value from 0-255 representing the state of the dimmer.  More complex devices use more DPS keys with various values representing the states and control functions of the device.
+
+tuya-mqtt exposes these DPS keys and their values via MQTT to allow for monitoring and control of such devices via anything that can connect to an MQTT broker.
 
 ### MQTT Topic Overview
 The top level topics are created using the device name or ID as the primary identifier.  If the device name is available, it will be converted to lowercase and spaced replace with underscores('_') characters so, for example, if using the sample devices.conf file from above, the top level topic would be:
@@ -80,7 +86,7 @@ If the device name was not available, it would instead use the device ID:
 ```
 tuya/86435357d8b123456789/
 ```
-All other topics are then build below this level.
+All state/command topics are then built below this level.
 
 tuya-mqtt directly exposes the Tuya DPS keys and values via MQTT topics and you can control any Tuya device using these topics, however, because it is not always easy to translate the Tuya values into something easy to consume by standard Home Automation systems, tuya-mqtt includes a simple templating engine to map DPS values to "friendly topics", i.e. topics that are easier to consume.
 
