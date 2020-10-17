@@ -12,7 +12,7 @@ Issues opened regarding acquiring keys will be closed without comment.  Please v
 **!!!!!!!!!! Important information regarding the 3.0 release !!!!!!!!!!**\
 The 3.0.0 release (Oct 17th, 2020) is a major refactor of the tuya-mqtt project and, as such, is a breaking release for all users of previous versions.  Almost everything about the project is different, including configuration method, topic names, etc.  Upgrading users should carefully read the instructions below and assume they are starting over from scratch.
 
-## Installation instructions:
+## Installation
 Download this project to your system into any directory (example below uses /opt/tuya-mqtt) and install tuyapi from the same folder that the tuya-mqtt.js is in
 ```
 // switch to opt directory
@@ -39,7 +39,7 @@ cp config.json.sample config.json
 nano config.json 
 ```
 
-## Seting up devices.conf:
+## Setting up devices.conf:
 If you use the "tuya-cli wizard" method to acquire your device keys you can leverage the output of this tool as the start of your devices.conf file.  Otherwise, you want to create a file using a formate like this:
 ```
 [
@@ -87,7 +87,7 @@ tuya-mqtt directly exposes the Tuya DPS keys and values via MQTT topics and you 
 
 By default, all devices are treated as generic Tuya devices and only the raw DPS values are exposed, however, some devices have predefined templates which can be configured in the device.conf file.  Also, you can manually define a template mapping using the "GenericDevice" configuraiton.  Please read more details in the [DEVICES](docs/DEVICES.md) documentation.
 
-For more details on DPS and friendly topics, please see the [TOPICS](TOPICS.md) documentation.
+For more details on DPS and friendly topics, please see the [TOPICS](docs/TOPICS.md) documentation.
 
 ## Issues
 Not all Tuya protocols are supported.  For example, some devices use protocol 3.2 which currently remains unsupported by the TuyAPI project due to lack of enough information to reverse engineer the protcol.  If you are unable to control your devices with tuya-mqtt please verify that you can query and control them with tuya-cli first.  If tuya-cli works, then this script should also work, if it doesn't then this script will not work either.
