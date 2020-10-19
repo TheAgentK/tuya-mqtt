@@ -3,6 +3,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [3.0.0]
+The 3.0.0 release is a major refactor of the project with significant changes from previous version.  Only major additions and changes are listed below.
+### Added
+- Added templating engine for mapping device DPS value to friendly topics
+- Added pre-defined template for common devices
+- Command topics for DPS keys
+
+### Changed
+- Configuration for devices is now via devices.conf file (based on output format of 'tuya-cli wizard' command)
+- Default device presents only raw DPS data
+- Commands sent only via MQTT messages to command topics
+- Updates all libraries to latest version
+
+### Removed
+- Topic based configuraiton has been removed
+
 ## [2.1.0]
 ### Added
 - Added ability to update validate communicaton with device and update state topic by issuing { "schema": true } command
