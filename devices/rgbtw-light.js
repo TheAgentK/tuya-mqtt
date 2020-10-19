@@ -31,6 +31,20 @@ class RGBTWLight extends TuyaDevice {
         this.deviceData.mdl = 'RGBTW Light'
         this.isRgbtwLight = true
 
+        // Set white value transform math
+        let whiteValueStateMath
+        let whiteValueCommandMath
+        if (this.config.whiteValueScale === 255) {
+            // Devices with brightness scale of 255 seem to not allow values
+            // less then 25 (10%) without producing timeout errors.
+            whiteValueStateMath = '/2.3-10.86'
+            whiteValueCommandMath = '*2.3+25'
+        } else {
+            // For other scale (usually 1000), 10-1000 seems OK.
+            whiteValueStateMath = '/('+this.config.whiteValueScale+'/100)'
+            whiteValueCommandMath = '*('+this.config.whiteValueScale+'/100)'
+        }
+
         // Map generic DPS topics to device specific topic names
         this.deviceTopics = {
             state: {
@@ -40,11 +54,10 @@ class RGBTWLight extends TuyaDevice {
             white_brightness_state: { 
                 key: this.config.dpsWhiteValue,
                 type: 'int',
-                min: 1,
-                max: 100,
-                scale: this.config.whiteValueScale,
-                stateMath: '/('+this.config.whiteValueScale+'/100)',
-                commandMath: '*('+this.config.whiteValueScale+'/100)'
+                topicMin: 0,
+                topicMax: 100,
+                stateMath: whiteValueStateMath,
+                commandMath: whiteValueCommandMath
             },
             hs_state: {
                 key: this.config.dpsColor,
@@ -77,8 +90,8 @@ class RGBTWLight extends TuyaDevice {
             this.deviceTopics.color_temp_state = {
                 key: this.config.dpsColorTemp,
                 type: 'int',
-                min: this.config.minColorTemp,
-                max: this.config.maxColorTemp,
+                topicMin: this.config.minColorTemp,
+                topicMax: this.config.maxColorTemp,
                 stateMath: '/'+scaleFactor+'*-'+rangeFactor+'+'+this.config.maxColorTemp,
                 commandMath: '/'+rangeFactor+'*-'+scaleFactor+'+'+tuyaMaxColorTemp
             }

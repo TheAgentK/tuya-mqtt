@@ -46,8 +46,8 @@ Simple device with on/off and brightness functions (dimmer switches or lights)
 | --- | --- | --- |
 | state | Power state | on/off |
 | command | Set power state | on/off, 0/1, true/false |
-| brightness_state | Brightness in % | 1-100 |
-| brightness_command | set brightness in % | 1-100 |
+| brightness_state | Brightness in % | 0-100 |
+| brightness_command | set brightness in % | 0-100 |
 
 Manual configuration options:
 | Option | Description | Default |
@@ -78,14 +78,14 @@ Tuya bulbs store their HSB color value in a single DPS key using a custom format
 | --- | --- | --- |
 | state | Power state | on/off |
 | command | Set power state | on/off, 0/1, true/false |
-| white_brightness_state | White mode brightness in % | 1-100 |
-| white_brightness_command | Set white mode brightness in % | 1-100 |
-| color_brightness_state | Color mode brightness in % | 1-100 |
-| color_brightness_command | Set white mode brightness in % | 1-100 |
-| hs_state | Hue, saturation % | H,S (Hue 0-360, Saturation 1-100) |
-| hs_command | Set hue, saturation % | H,S (Hue 0-360, Saturation 1-100) |
-| hsb_state | Hue, saturation %, brightness % | H,S,B (Hue 0-360, Saturation 1-100, Brightness 1-100) |
-| hsb_command | Set hue, saturation %, brightness % | H,S,B (Hue 0-360, Saturation 1-100, Brightness 1-100) |
+| white_brightness_state | White mode brightness in % | 0-100 |
+| white_brightness_command | Set white mode brightness in % | 0-100 |
+| color_brightness_state | Color mode brightness in % | 0-100 |
+| color_brightness_command | Set white mode brightness in % | 0-100 |
+| hs_state | Hue, saturation % | H,S (Hue 0-360, Saturation 0-100) |
+| hs_command | Set hue, saturation % | H,S (Hue 0-360, Saturation 0-100) |
+| hsb_state | Hue, saturation %, brightness % | H,S,B (Hue 0-360, Saturation 0-100, Brightness 0-100) |
+| hsb_command | Set hue, saturation %, brightness % | H,S,B (Hue 0-360, Saturation 0-100, Brightness 0-100) |
 | mode_state | White/Color mode | 'white', 'colour' (some devices also support scenes here) |
 | mode_command | Set white/color mode | 'white', 'colour' (some devices also support scenes here) |
 | color_temp_state | Color temperature in mireds (only available if device support color temp) | 154-400 (defult range, can be overridden) |

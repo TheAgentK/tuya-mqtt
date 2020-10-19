@@ -409,14 +409,14 @@ class TuyaDevice {
         // Check if it's a number and it's not outside of defined range
         if (isNaN(command)) {
             return invalid
-        } else if (deviceTopic.hasOwnProperty('min') && command < deviceTopic.min) {
+        } else if (deviceTopic.hasOwnProperty('topicMin') && command < deviceTopic.topicMin) {
             debugError('Received command value "'+command+'" that is less than the configured minimum value')
-            debugError('Overriding command with minimum value '+deviceTopic.min)
-            command = deviceTopic.min
-        } else if (deviceTopic.hasOwnProperty('max') && command > deviceTopic.max) {
+            debugError('Overriding command with minimum value '+deviceTopic.topicMin)
+            command = deviceTopic.topicMin
+        } else if (deviceTopic.hasOwnProperty('topicMax') && command > deviceTopic.topicMax) {
             debugError('Received command value "'+command+'" that is greater than the configured maximum value')
-            debugError('Overriding command with maximum value: '+deviceTopic.max)
-            command = deviceTopic.max
+            debugError('Overriding command with maximum value: '+deviceTopic.topicMax)
+            command = deviceTopic.topicMax
         }
 
         // Perform any required math transforms before returing command value

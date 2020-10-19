@@ -12,6 +12,20 @@ class SimpleDimmer extends TuyaDevice {
 
         this.deviceData.mdl = 'Dimmer Switch'
 
+        // Set white value transform math
+        let brightnessStateMath
+        let brightnessCommandMath
+        if (this.config.brightnessScale === 255) {
+            // Devices with brightness scale of 255 seem to not allow values
+            // less then 25 (10%) without producing timeout errors.
+            brightnessStateMath = '/2.3-10.86'
+            brightnessCommandMath = '*2.3+25'
+        } else {
+            // For other scale (usually 1000), 10-1000 seems OK.
+            brightnessStateMath = '/('+this.config.brightnessScale+'/100)'
+            brightnessCommandMath = '*('+this.config.brightnessScale+'/100)'
+        }
+
         // Map generic DPS topics to device specific topic names
         this.deviceTopics = {
             state: {
@@ -21,9 +35,10 @@ class SimpleDimmer extends TuyaDevice {
             brightness_state: { 
                 key: this.config.dpsBrightness,
                 type: 'int',
-                min: (this.config.brightnessScale = 1000) ? 10 : 1,
-                max: this.config.brightnessScale,
-                scale: this.config.brightnessScale
+                topicMin: 0,
+                topicMax: 100,
+                stateMath: brightnessStateMath,
+                commandMath: brightnessCommandMath
             }
         }
 
@@ -44,6 +59,7 @@ class SimpleDimmer extends TuyaDevice {
             command_topic: this.baseTopic+'command',
             brightness_state_topic: this.baseTopic+'brightness_state',
             brightness_command_topic: this.baseTopic+'brightness_command',
+            brightness_scale: 100,
             availability_topic: this.baseTopic+'status',
             payload_available: 'online',
             payload_not_available: 'offline',

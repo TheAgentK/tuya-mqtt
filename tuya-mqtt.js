@@ -20,7 +20,7 @@ process.on('SIGINT', processExit.bind(0))
 process.on('SIGTERM', processExit.bind(0))
 process.on('uncaughtException', processExit.bind(1))
 
-// Set unreachable status on exit
+// Disconnect from and publish offline status for all devices on exit
 async function processExit(exitCode) {
     for (let tuyaDevice of tuyaDevices) {
         tuyaDevice.device.disconnect()
@@ -30,6 +30,7 @@ async function processExit(exitCode) {
     process.exit()
 }
 
+// Get new deivce based on configured type
 function getDevice(configDevice, mqttClient) {
     const deviceInfo = {
         configDevice: configDevice,
@@ -57,12 +58,16 @@ function initDevices(configDevices, mqttClient) {
     }
 }
 
+// Republish devices 2x with 30 seconds sleep if restart of HA is detected
 async function republishDevices() {
-    // Republish devices and state after 30 seconds if restart of HA is detected
-    debug('Resending device config/state in 30 seconds')
-    await utils.sleep(30)
-    for (let device of tuyaDevices) {
-        device.init()
+    for (let i = 0; i < 2; i++) {
+        debug('Resending device config/state in 30 seconds')
+        await utils.sleep(30)
+        for (let device of tuyaDevices) {
+            device.publishMqtt(device.baseTopic+'status', 'online')
+            device.init()
+        }
+        await utils.sleep(2)
     }
 }
 
