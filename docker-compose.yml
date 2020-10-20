@@ -1,0 +1,11 @@
+version: '3.7'
+services:
+  tuya-mqtt:
+    container_name: tuya-mqtt
+    build: .
+    volumes:
+      - ./config.json:/tuya-mqtt/config.json
+      - ./devices.conf:/tuya-mqtt/devices.conf
+    restart: always
+    environment:
+      - DEBUG=tuya-mqtt:*
