@@ -56,6 +56,8 @@ If you use the "tuya-cli wizard" method to acquire your device keys you can leve
 ```
 Note that, because the format is JSON5, which is a superset of JSON, you can use standard, strict JSON syntax, or the more forgiving JSON5 format, or even mix and match in the same file.
 
+By default tuya-mqtt will attempt to find the device and automatically detect the Tuya protocol version, however, this only works if the system running tuya-mqtt is on the same network/subnet as the devices being controlled.  If this is not the case, or if automatic detection fails for some other reason, it is possible to specify the IP address and protocol manually by adding the "ip:" property to the devices.conf file.  Note that if the IP address is specified manually it is required to also manually specify the protocol version using the "version:" parameter as either "3.1" or "3.3".  The easiest way to determine the protocol version is to try controlling the device with tuya-cli and try each version to see which one works.
+
 While the above syntax is enough to create a working tuya-mqtt install with generic devices, the full power and simplicity of tuya-mqtt 3.0 is only unlocked by configuring device types to get .  Please see the full [DEVICES](docs/DEVICES.md) documenation for details.
 
 ### Starting tuya-mqtt
