@@ -69,6 +69,11 @@ To enable debugging output (required when opening an issue):
 DEBUG=tuya-mqtt:* tuya-mqtt.js
 ```
 
+### Updating devices.conf with new and/or changed devices:
+After adding or changing devices to your Tuya account the devices.conf file can be automatically updated with all new devices and name/key changes by using the merge-devices.js script.  Create a file named new-devices.conf with the new "tuya-cli wizard" output then run ```node merge-devices.js```.  A dated backup of the original devices.conf file will be created automatically before changes are made.  Devices are only added and updated, never removed.  The resulting devices.conf file will be neatly formatted and sorted alphabetically by device name.
+
+To prevent device entries from being updated by the merge script, add property "allowMerge: false" to the device definition in the devices.conf file.
+
 ### Usage Overview
 Tuya devices work by mapping device functions to various values stored in data points (referred to as DPS values) which are referenced via an index number, referred to as the DPS key.  For example, a simple on/off switch may have a single DPS value, stored in DPS kep 1 (DPS1).  This value is likely to have a setting of true/false representing the on/off state of the device.  The device state can be read via DPS1, and, for values that can be changed (some DPS values are read-only), sending true/false to DPS1 will turn the device on/off.  A simple dimmer might have the same DPS1 value, but an additional DPS2 value from 1-255 representing the state of the dimmer.  More complex devices use more DPS keys with various values representing the states and control functions of the device.
 
@@ -136,7 +141,7 @@ openHAB examples are [here](docs/openHAB.md).
 - [Tycale](https://github.com/Tycale)
 - [crashdummymch](https://github.com/crashdummymch)
 - [GadgetAngel](https://github.com/GadgetAngel)
-
+- [dkrahmer](https://github.com/dkrahmer)
 
 ## Related Projects:
 - https://github.com/codetheweb/tuyapi
