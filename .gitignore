@@ -1,6 +1,7 @@
 old/
 test/
 config.json
+devices.conf
 
 # Logs
 logs

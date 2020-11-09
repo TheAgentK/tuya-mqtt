@@ -35,7 +35,9 @@ function getDevice(configDevice, mqttClient) {
     const deviceInfo = {
         configDevice: configDevice,
         mqttClient: mqttClient,
-        topic: CONFIG.topic
+        topic: CONFIG.topic,
+        qos: CONFIG.qos,
+        retain_status_topic: CONFIG.retain_status_topic
     }
     switch (configDevice.type) {
         case 'SimpleSwitch':
@@ -64,7 +66,7 @@ async function republishDevices() {
         debug('Resending device config/state in 30 seconds')
         await utils.sleep(30)
         for (let device of tuyaDevices) {
-            device.publishMqtt(device.baseTopic+'status', 'online')
+            device.publishMqtt({topic: device.options.baseTopic+'status', message: 'online'})
             device.init()
         }
         await utils.sleep(2)
@@ -84,11 +86,11 @@ const main = async() => {
         process.exit(1)
     }
 
-    if (typeof CONFIG.qos == 'undefined') {
+    if (typeof CONFIG.qos === undefined) {
         CONFIG.qos = 1
     }
-    if (typeof CONFIG.retain == 'undefined') {
-        CONFIG.retain = false
+    if (typeof CONFIG.retain_status_topic === undefined) {
+        CONFIG.retain_status_topic = false
     }
 
     try {
@@ -105,11 +107,22 @@ const main = async() => {
         process.exit(1)
     }
 
+    let will_topic = CONFIG.topic + 'script_status'
+    if(configDevices.length == 1 ) { //If there's only a single device, directly communicate LWT to its state
+        will_topic = GenericDevice.getDeviceOptions(CONFIG.topic, configDevices[0]).baseTopic + 'status'
+    }
+
     mqttClient = mqtt.connect({
         host: CONFIG.host,
         port: CONFIG.port,
         username: CONFIG.mqtt_user,
         password: CONFIG.mqtt_pass,
+        will: {
+          topic: will_topic,
+          payload: 'offline',
+          qos: CONFIG.qos,
+          retain: CONFIG.retain_status_topic
+        }
     })
 
     mqttClient.on('connect', function (err) {

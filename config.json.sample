@@ -4,5 +4,6 @@
     "topic": "tuya/",
     "mqtt_user": "",
     "mqtt_pass": "",
-    "qos": 2
+    "qos": 1,
+    "retain_status_topic": false
 }

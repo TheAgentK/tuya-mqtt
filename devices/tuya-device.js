@@ -7,25 +7,40 @@ const debugCommand = require('debug')('tuya-mqtt:command')
 const debugError = require('debug')('tuya-mqtt:error')
 
 class TuyaDevice {
+    static getDeviceOptions(baseTopic, configDevice) {
+        // Build TuyAPI device options from device config info
+        let devOptions = {
+            id: configDevice.id,
+            key: configDevice.key
+        }
+        if (configDevice.name) { devOptions.name = configDevice.name.toLowerCase().replace(/ /g,'_') }
+        if (configDevice.ip) { 
+            devOptions.ip = configDevice.ip
+            if (configDevice.version) {
+                devOptions.version = configDevice.version
+            } else {
+                devOptions.version = '3.1'
+            }
+        }
+        
+        // Build the MQTT topic for this device (friendly name or device id)
+        if (devOptions.name) {
+            devOptions.baseTopic = baseTopic + devOptions.name + '/'
+        } else {
+            devOptions.baseTopic = baseTopic + devOptions.id + '/'
+        }
+        return devOptions
+    }
+
     constructor(deviceInfo) {
         this.config = deviceInfo.configDevice
         this.mqttClient = deviceInfo.mqttClient
         this.topic = deviceInfo.topic
+        this.qos = deviceInfo.qos
+        this.retain_status_topic = deviceInfo.retain_status_topic
 
         // Build TuyAPI device options from device config info
-        this.options = {
-            id: this.config.id,
-            key: this.config.key
-        }
-        if (this.config.name) { this.options.name = this.config.name.toLowerCase().replace(/ /g,'_') }
-        if (this.config.ip) { 
-            this.options.ip = this.config.ip
-            if (this.config.version) {
-                this.options.version = this.config.version
-            } else {
-                this.options.version = '3.1'
-            }
-        }
+        this.options = TuyaDevice.getDeviceOptions(this.topic, this.config)
 
         // Set default device data for Home Assistant device registry
         // Values may be overridden by individual devices
@@ -44,13 +59,6 @@ class TuyaDevice {
 
         // Missed heartbeat monitor
         this.heartbeatsMissed = 0
-
-        // Build the MQTT topic for this device (friendly name or device id)
-        if (this.options.name) {
-            this.baseTopic = this.topic + this.options.name + '/'
-        } else {
-            this.baseTopic = this.topic + this.options.id + '/'
-        }
 
         // Create the new Tuya Device
         this.device = new TuyAPI(JSON.parse(JSON.stringify(this.options)))
@@ -79,7 +87,7 @@ class TuyaDevice {
             if (this.device.isConnected()) {
                 debug('Connected to device ' + this.toString())
                 this.heartbeatsMissed = 0
-                this.publishMqtt(this.baseTopic+'status', 'online')
+                this.publishMqtt({topic: this.options.baseTopic+'status', message: 'online', _retain: this.retain_status_topic})
                 this.init()
             }
         })
@@ -87,7 +95,7 @@ class TuyaDevice {
         // On disconnect perform device specific disconnect
         this.device.on('disconnected', () => {
             this.connected = false
-            this.publishMqtt(this.baseTopic+'status', 'offline')
+            this.publishMqtt({topic: this.options.baseTopic+'status', message: 'offline', _retain: this.retain_status_topic})
             debug('Disconnected from device ' + this.toString())
         })
 
@@ -166,7 +174,7 @@ class TuyaDevice {
             if (this.dps[key] && this.dps[key].updated) {
                 const state = this.getTopicState(deviceTopic, this.dps[key].val)
                 if (state) { 
-                    this.publishMqtt(this.baseTopic + topic, state, true)
+                    this.publishMqtt({topic: this.options.baseTopic + topic, message: state, isDebug: true})
                 }
             }
         }
@@ -180,7 +188,7 @@ class TuyaDevice {
         try {
             if (!Object.keys(this.dps).length) { return }
 
-            const dpsTopic = this.baseTopic + 'dps'
+            const dpsTopic = this.options.baseTopic + 'dps'
             // Publish DPS JSON data if not empty
             let data = {}
             for (let key in this.dps) {
@@ -192,7 +200,7 @@ class TuyaDevice {
             data = JSON.stringify(data)
             const dpsStateTopic = dpsTopic + '/state'
             debugState('MQTT DPS JSON: ' + dpsStateTopic + ' -> ', data)
-            this.publishMqtt(dpsStateTopic, data, false)
+            this.publishMqtt({topic: dpsStateTopic, message: data, isDebug: false})
 
             // Publish dps/<#>/state value for each device DPS
             for (let key in this.dps) {
@@ -201,7 +209,7 @@ class TuyaDevice {
                     const dpsKeyTopic = dpsTopic + '/' + key + '/state'
                     const data = this.dps.hasOwnProperty(key) ? this.dps[key].val.toString() : 'None'
                     debugState('MQTT DPS'+key+': '+dpsKeyTopic+' -> ', data)
-                    this.publishMqtt(dpsKeyTopic, data, false)
+                    this.publishMqtt({topic: dpsKeyTopic, message: data, isDebug: false})
                     this.dps[key].updated = false
                 }
             }
@@ -291,10 +299,10 @@ class TuyaDevice {
             debugCommand('Device '+this.options.id+' received command topic: '+commandTopic+', message: '+command)
             let commandResult = this.sendTuyaCommand(command, deviceTopic)
             if (!commandResult) {
-                debugCommand('Command topic '+this.baseTopic+commandTopic+' received invalid value: '+command)
+                debugCommand('Command topic '+this.options.baseTopic+commandTopic+' received invalid value: '+command)
             }
         } else {
-            debugCommand('Invalid command topic '+this.baseTopic+commandTopic+' for device id: '+this.config.id)
+            debugCommand('Invalid command topic '+this.options.baseTopic+commandTopic+' for device id: '+this.config.id)
             return
         }
     }
@@ -621,9 +629,9 @@ class TuyaDevice {
     }
 
     // Publish MQTT
-    publishMqtt(topic, message, isDebug) {
+    publishMqtt({topic, message, isDebug, _qos=this.qos, _retain=false}) {
         if (isDebug) { debugState(topic, message) }
-        this.mqttClient.publish(topic, message, { qos: 1 });
+        this.mqttClient.publish(topic, message, { qos: _qos, retain: _retain });
     }
 }
 
