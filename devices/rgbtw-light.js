@@ -110,17 +110,17 @@ class RGBTWLight extends TuyaDevice {
 
         const discoveryData = {
             name: (this.config.name) ? this.config.name : this.config.id,
-            state_topic: this.baseTopic+'state',
-            command_topic: this.baseTopic+'command',
-            brightness_state_topic: this.baseTopic+'color_brightness_state',
-            brightness_command_topic: this.baseTopic+'color_brightness_command',
+            state_topic: this.options.baseTopic+'state',
+            command_topic: this.options.baseTopic+'command',
+            brightness_state_topic: this.options.baseTopic+'color_brightness_state',
+            brightness_command_topic: this.options.baseTopic+'color_brightness_command',
             brightness_scale: 100,
-            hs_state_topic: this.baseTopic+'hs_state',
-            hs_command_topic: this.baseTopic+'hs_command',
-            white_value_state_topic: this.baseTopic+'white_brightness_state',
-            white_value_command_topic: this.baseTopic+'white_brightness_command',
+            hs_state_topic: this.options.baseTopic+'hs_state',
+            hs_command_topic: this.options.baseTopic+'hs_command',
+            white_value_state_topic: this.options.baseTopic+'white_brightness_state',
+            white_value_command_topic: this.options.baseTopic+'white_brightness_command',
             white_value_scale: 100,
-            availability_topic: this.baseTopic+'status',
+            availability_topic: this.options.baseTopic+'status',
             payload_available: 'online',
             payload_not_available: 'offline',
             unique_id: this.config.id,
@@ -128,15 +128,15 @@ class RGBTWLight extends TuyaDevice {
         }
 
         if (this.config.dpsColorTemp) {
-            discoveryData.color_temp_state_topic = this.baseTopic+'color_temp_state'
-            discoveryData.color_temp_command_topic = this.baseTopic+'color_temp_command'
+            discoveryData.color_temp_state_topic = this.options.baseTopic+'color_temp_state'
+            discoveryData.color_temp_command_topic = this.options.baseTopic+'color_temp_command'
             discoveryData.min_mireds = this.config.minColorTemp
             discoveryData.max_mireds = this.config.maxColorTemp
         }
 
         debugDiscovery('Home Assistant config topic: '+configTopic)
         debugDiscovery(discoveryData)
-        this.publishMqtt(configTopic, JSON.stringify(discoveryData))
+        this.publishMqtt({topic: configTopic, message: JSON.stringify(discoveryData)})
     }
 
     async guessLightInfo() {

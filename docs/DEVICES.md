@@ -193,7 +193,7 @@ The following tables define the available template value types and their options
 ### String values
 | option | value |
 | --- | --- |
-| type | 'string' |
+| type | 'str' |
 | key | DPS key of the value |
 
 ### Tuya HSB values (newer style Tuya, 12 character color value)
