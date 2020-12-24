@@ -17,7 +17,7 @@ class TuyaDevice {
             id: this.config.id,
             key: this.config.key
         }
-        if (this.config.name) { this.options.name = this.config.name.toLowerCase().replace(/ /g,'_') }
+        if (this.config.name) { this.options.name = this.config.name.toLowerCase().replace(/\s|\+|#|\//g,'_') }
         if (this.config.ip) { 
             this.options.ip = this.config.ip
             if (this.config.version) {
@@ -249,10 +249,10 @@ class TuyaDevice {
         // Perform any required math transforms before returing command value
         switch (deviceTopic.type) {
             case 'int':
-                value = (deviceTopic.stateMath) ? parseInt(Math.round(evaluate(value+deviceTopic.stateMath))) : value = parseInt(value)
+                value = (deviceTopic.stateMath) ? parseInt(Math.round(evaluate(value+deviceTopic.stateMath))) : parseInt(value)
                 break;
             case 'float':
-                value = (deviceTopic.stateMath) ? parseFloat(evaluate(value+deviceTopic.stateMath)) : value = parseFloat(value)
+                value = (deviceTopic.stateMath) ? parseFloat(evaluate(value+deviceTopic.stateMath)) : parseFloat(value)
                 break;
             }
 
@@ -600,6 +600,14 @@ class TuyaDevice {
         await utils.sleep(10)
         if (this.connected) { return }
         this.connectDevice()
+    }
+
+    // Republish device discovery/state data (used for Home Assistant state topic)
+    async republish() {
+        const status = (this.device.isConnected()) ? 'online' : 'offline'
+        this.publishMqtt(this.baseTopic+'status', status)
+        await utils.sleep(1)
+        this.init()
     }
     
     // Simple function to monitor heartbeats to determine if 

@@ -1,6 +1,6 @@
 {
   "name": "tuya-mqtt",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Control Tuya devices locally via MQTT",
   "homepage": "https://github.com/TheAgentK/tuya-mqtt#readme",
   "main": "tuya-mqtt.js",

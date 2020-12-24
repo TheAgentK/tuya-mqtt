@@ -9,11 +9,9 @@ process.on('SIGINT', processExit.bind(0));
 process.on('SIGTERM', processExit.bind(0));
 process.on('uncaughtException', processExit.bind(1));
 
-// Disconnect from and publish offline status for all devices on exit
 async function processExit(exitCode) {
     if (exitCode || exitCode === 0)
         console.error('Exit code: ' + exitCode)
-    await utils.sleep(1);
     process.exit();
 }
 
