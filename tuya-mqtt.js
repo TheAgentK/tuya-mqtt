@@ -64,8 +64,7 @@ async function republishDevices() {
         debug('Resending device config/state in 30 seconds')
         await utils.sleep(30)
         for (let device of tuyaDevices) {
-            device.publishMqtt(device.baseTopic+'status', 'online')
-            device.init()
+            device.republish()
         }
         await utils.sleep(2)
     }

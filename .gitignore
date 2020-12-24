@@ -1,6 +1,8 @@
 old/
 test/
 config.json
+.vscode/
+.bak
 
 # Logs
 logs
