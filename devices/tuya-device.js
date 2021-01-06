@@ -44,6 +44,7 @@ class TuyaDevice {
 
         // Missed heartbeat monitor
         this.heartbeatsMissed = 0
+        this.reconnecting = false
 
         // Build the MQTT topic for this device (friendly name or device id)
         if (this.options.name) {
@@ -85,19 +86,19 @@ class TuyaDevice {
         })
 
         // On disconnect perform device specific disconnect
-        this.device.on('disconnected', () => {
+        this.device.on('disconnected', async () => {
             this.connected = false
             this.publishMqtt(this.baseTopic+'status', 'offline')
             debug('Disconnected from device ' + this.toString())
+            await utils.sleep(5)
+            this.reconnect()
         })
 
         // On connect error call reconnect
         this.device.on('error', async (err) => {
             debugError(err)
             await utils.sleep(1)
-            if (!this.device.isConnected()) {
-                this.reconnect()
-            }
+            this.reconnect()
         })
 
         // On heartbeat reset heartbeat timer
@@ -112,9 +113,9 @@ class TuyaDevice {
         this.connected = false
         for (let topic in this.deviceTopics) {
             const key = this.deviceTopics[topic].key
+            if (!this.dps[key]) { this.dps[key] = {} }
             try {
-                const result = await this.device.get({"dps": key})
-                this.dps[key].val = result
+                this.dps[key].val = await this.device.get({"dps": key})
                 this.dps[key].updated = true
             } catch {
                 debugError('Could not get value for device DPS key '+key)
@@ -596,10 +597,22 @@ class TuyaDevice {
 
     // Retry connection every 10 seconds if unable to connect
     async reconnect() {
-        debugError('Error connecting to device id '+this.options.id+'...retry in 10 seconds.')
-        await utils.sleep(10)
-        if (this.connected) { return }
-        this.connectDevice()
+        if (!this.device.isConnected() && !this.reconnecting) {
+            this.reconnecting = true
+            debugError('Error connecting to device id '+this.options.id+'...retry in 10 seconds.')
+            await utils.sleep(10)
+            if (this.connected) { return }
+            this.connectDevice()
+            this.reconnecting = false
+        }
+    }
+
+    // Republish device discovery/state data (used for Home Assistant state topic)
+    async republish() {
+        const status = (this.device.isConnected()) ? 'online' : 'offline'
+        this.publishMqtt(this.baseTopic+'status', status)
+        await utils.sleep(1)
+        this.init()
     }
 
     // Republish device discovery/state data (used for Home Assistant state topic)

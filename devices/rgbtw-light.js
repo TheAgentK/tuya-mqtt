@@ -148,7 +148,7 @@ class RGBTWLight extends TuyaDevice {
         const mode2 = await this.device.get({"dps": 2})
         const mode21 = await this.device.get({"dps": 21})
         if (mode2 && (mode2 === 'white' || mode2 === 'colour' || mode2.toString().includes('scene'))) {
-            debug('Detected probably Tuya color bulb at DPS 1-5, checking more details...')
+            debug('Detected likely Tuya color bulb at DPS 1-5, checking more details...')
             this.guess = {'dpsPower': 1, 'dpsMode': 2, 'dpsWhiteValue': 3, 'whiteValueScale': 255, 'dpsColorTemp': 4, 'colorTempScale': 255, 'dpsColor': 5}
         } else if (mode21 && (mode21 === 'white' || mode21 === 'colour' || mode21.toString().includes('scene'))) {
             debug('Detected likely Tuya color bulb at DPS 20-24, checking more details...')
@@ -159,14 +159,18 @@ class RGBTWLight extends TuyaDevice {
             debug('Attempting to detect if bulb supports color temperature...')
             const colorTemp = await this.device.get({"dps": this.guess.dpsColorTemp})
             if (colorTemp !== '' && colorTemp >= 0 && colorTemp <= this.guess.colorTempScale) {
-                debug('Detected likely color temerature support')
+                debug('Detected likely color temperature support')
             } else {
                 debug('No color temperature support detected')
                 this.guess.dpsColorTemp = 0
             }
             debug('Attempting to detect Tuya color format used by device...')
             const color = await this.device.get({"dps": this.guess.dpsColor})
-            this.guess.colorType = (color && color.length === 12) ? 'hsb' : 'hsbhex'
+            if (this.guess.dpsPower === 1) {
+                this.guess.colorType = (color && color.length === 12) ? 'hsb' : 'hsbhex'
+            } else {
+                this.guess.colorType = (color && color.length === 14) ? 'hsbhex' : 'hsb'
+            }
             debug ('Detected Tuya color format '+this.guess.colorType.toUpperCase())
         }
     }
