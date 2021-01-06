@@ -614,6 +614,14 @@ class TuyaDevice {
         await utils.sleep(1)
         this.init()
     }
+
+    // Republish device discovery/state data (used for Home Assistant state topic)
+    async republish() {
+        const status = (this.device.isConnected()) ? 'online' : 'offline'
+        this.publishMqtt(this.baseTopic+'status', status)
+        await utils.sleep(1)
+        this.init()
+    }
     
     // Simple function to monitor heartbeats to determine if 
     monitorHeartbeat() {
