@@ -597,22 +597,15 @@ class TuyaDevice {
 
     // Retry connection every 10 seconds if unable to connect
     async reconnect() {
-        if (!this.device.isConnected() && !this.reconnecting) {
+        if (!this.reconnecting) {
             this.reconnecting = true
             debugError('Error connecting to device id '+this.options.id+'...retry in 10 seconds.')
             await utils.sleep(10)
-            if (this.connected) { return }
-            this.connectDevice()
+            if (!this.device.isConnected) {
+                this.connectDevice()
+            }
             this.reconnecting = false
         }
-    }
-
-    // Republish device discovery/state data (used for Home Assistant state topic)
-    async republish() {
-        const status = (this.device.isConnected()) ? 'online' : 'offline'
-        this.publishMqtt(this.baseTopic+'status', status)
-        await utils.sleep(1)
-        this.init()
     }
 
     // Republish device discovery/state data (used for Home Assistant state topic)
