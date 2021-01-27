@@ -601,9 +601,7 @@ class TuyaDevice {
             this.reconnecting = true
             debugError('Error connecting to device id '+this.options.id+'...retry in 10 seconds.')
             await utils.sleep(10)
-            if (!this.device.isConnected) {
-                this.connectDevice()
-            }
+            this.connectDevice()
             this.reconnecting = false
         }
     }
@@ -626,7 +624,7 @@ class TuyaDevice {
                     await utils.sleep(1)
                     this.connectDevice()
                 } else if (this.heartbeatsMissed > 0) {
-                    const errMessage = this.heartbeatsMissed > 1 ? " consecutive heartbeats" : " heartbeat"
+                    const errMessage = this.heartbeatsMissed > 1 ? " heartbeats" : " heartbeat"
                     debugError('Device id '+this.options.id+' has missed '+this.heartbeatsMissed+errMessage)                
                 }
                 this.heartbeatsMissed++
