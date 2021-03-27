@@ -80,7 +80,7 @@ class TuyaDevice {
             if (this.device.isConnected()) {
                 debug('Connected to device ' + this.toString())
                 this.heartbeatsMissed = 0
-                this.publishMqtt(this.baseTopic+'status', 'online')
+                this.publishMqtt(this.baseTopic+'status', 'online',true)
                 this.init()
             }
         })
@@ -88,7 +88,7 @@ class TuyaDevice {
         // On disconnect perform device specific disconnect
         this.device.on('disconnected', async () => {
             this.connected = false
-            this.publishMqtt(this.baseTopic+'status', 'offline')
+            this.publishMqtt(this.baseTopic+'status', 'offline',true)
             debug('Disconnected from device ' + this.toString())
             await utils.sleep(5)
             this.reconnect()
@@ -167,7 +167,7 @@ class TuyaDevice {
             if (this.dps[key] && this.dps[key].updated) {
                 const state = this.getTopicState(deviceTopic, this.dps[key].val)
                 if (state) { 
-                    this.publishMqtt(this.baseTopic + topic, state, true)
+                    this.publishMqtt(this.baseTopic + topic, state, false)
                 }
             }
         }
@@ -609,7 +609,7 @@ class TuyaDevice {
     // Republish device discovery/state data (used for Home Assistant state topic)
     async republish() {
         const status = (this.device.isConnected()) ? 'online' : 'offline'
-        this.publishMqtt(this.baseTopic+'status', status)
+        this.publishMqtt(this.baseTopic+'status', status, false)
         await utils.sleep(1)
         this.init()
     }
@@ -632,10 +632,11 @@ class TuyaDevice {
         }, 10000)
     }
 
-    // Publish MQTT
-    publishMqtt(topic, message, isDebug) {
+
+
+    publishMqtt(topic, message, isDebug, isRetained) {
         if (isDebug) { debugState(topic, message) }
-        this.mqttClient.publish(topic, message, { qos: 1 });
+        this.mqttClient.publish(topic, message, { qos: 1, retain: isRetained });
     }
 }
 
