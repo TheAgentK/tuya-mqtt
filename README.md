@@ -129,8 +129,8 @@ tuya/dimmer_device/DPS/command
 In addition to the JSON DPS topic, it's also possible to use the DPS key topics.  DPS key topics allow you to monitor and send simple bool/number/string values directly to DPS keys without having to use the Tuya JSON format, the conversion to Tuya JSON is handled by tuya-mqtt.  Using the example from above, turning on the dimmer and setting brightness to 50% you would simply issue the message "true" to DPS/1/command and the message "128" to DPS/2/command.
 ```
 tuya/dimmer_device/DPS/1/state    --> true/false for on/off state
-tuya/dimmer_device/DPS/2/command  <-- 1-255 for brightness state
-tuya/dimmer_device/DPS/1/state    --> accept true/false for turning device on/off
+tuya/dimmer_device/DPS/2/state    --> 1-255 for brightness state
+tuya/dimmer_device/DPS/1/command  <-- accept true/false for turning device on/off
 tuya/dimmer_device/DPS/2/command  <-- accepts 1-255 for controlling brightness level
 ```
 **!!! Important Note !!!**
