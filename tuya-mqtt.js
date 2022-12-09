@@ -35,7 +35,9 @@ function getDevice(configDevice, mqttClient) {
     const deviceInfo = {
         configDevice: configDevice,
         mqttClient: mqttClient,
-        topic: CONFIG.topic
+        topic: CONFIG.topic,
+        qos: CONFIG.qos,
+        retain: CONFIG.retain
     }
     switch (configDevice.type) {
         case 'SimpleSwitch':

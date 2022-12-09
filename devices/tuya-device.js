@@ -11,6 +11,8 @@ class TuyaDevice {
         this.config = deviceInfo.configDevice
         this.mqttClient = deviceInfo.mqttClient
         this.topic = deviceInfo.topic
+        this.qos = deviceInfo.qos
+        this.retain = deviceInfo.retain
 
         // Build TuyAPI device options from device config info
         this.options = {
@@ -634,8 +636,14 @@ class TuyaDevice {
 
     // Publish MQTT
     publishMqtt(topic, message, isDebug) {
+        var options = {
+          qos: this.qos,
+          retain: this.retain
+        }
+        
         if (isDebug) { debugState(topic, message) }
-        this.mqttClient.publish(topic, message, { qos: 1 });
+        #this.mqttClient.publish(topic, message, { qos: 1 });
+        this.mqttClient.publish(topic, message, options);
     }
 }
 
