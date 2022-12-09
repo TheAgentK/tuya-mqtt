@@ -642,7 +642,7 @@ class TuyaDevice {
         }
         
         if (isDebug) { debugState(topic, message) }
-        #this.mqttClient.publish(topic, message, { qos: 1 });
+        //this.mqttClient.publish(topic, message, { qos: 1 });
         this.mqttClient.publish(topic, message, options);
     }
 }
